@@ -34,6 +34,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User findByEmail(String email) {
+        User user = userMapper.findByEmail(email);
+        logger.info("根据邮箱查找用户: {}, 结果: {}", email, user != null ? "找到" : "未找到");
+        return user;
+    }
+
+    @Override
     public void save(User user) {
         logger.info("保存用户: {}", user.getUsername());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
