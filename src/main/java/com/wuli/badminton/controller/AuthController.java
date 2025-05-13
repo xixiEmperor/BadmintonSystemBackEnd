@@ -4,7 +4,6 @@ import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.service.UserService;
 import com.wuli.badminton.util.JwtUtil;
-import com.wuli.badminton.util.TokenExtractor;
 import com.wuli.badminton.vo.ResponseVo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,9 +39,6 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
-    
-    @Autowired
-    private TokenExtractor tokenExtractor;
 
     @PostMapping("/login")
     public ResponseVo<?> login(@RequestBody User user) {
@@ -126,38 +121,4 @@ public class AuthController {
         }
     }
 
-    /**
-     * 用户退出登录
-     * @param request HTTP请求
-     * @return 退出登录结果
-     */
-    @PostMapping("/logout")
-    public ResponseVo<?> logout(HttpServletRequest request) {
-        String token = tokenExtractor.extractToken(request);
-        
-        if (token == null) {
-            logger.warn("退出登录失败：未提供Token");
-            return ResponseVo.error(ResponseEnum.UNAUTHORIZED);
-        }
-        
-        try {
-            // 验证Token是否有效
-            if (!jwtUtil.validateToken(token)) {
-                logger.warn("退出登录失败：Token已过期或无效");
-                return ResponseVo.error(ResponseEnum.TOKEN_EXPIRED);
-            }
-            
-            // 获取用户名并记录退出日志
-            String username = jwtUtil.getUsernameFromToken(token);
-            logger.info("用户 {} 退出登录", username);
-            
-            // 将Token添加到黑名单
-            jwtUtil.invalidateToken(token);
-            
-            return ResponseVo.success(ResponseEnum.LOGOUT_SUCCESS.getDesc());
-        } catch (Exception e) {
-            logger.error("退出登录处理异常", e);
-            return ResponseVo.error(ResponseEnum.SERVER_ERROR);
-        }
-    }
 } 

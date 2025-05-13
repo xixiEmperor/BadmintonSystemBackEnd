@@ -11,4 +11,5 @@ public class User {
     private String avatar;  //头像
     private String email;
     private String createTime;
+    private String updateTime;
 } 
