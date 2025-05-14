@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.UserDetailMapper">
+    <select id="findByUserId" resultType="com.wuli.badminton.pojo.UserDetail">
+        SELECT * FROM user_detail WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.UserDetail" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_detail (user_id, nickname, phone, bio, gender, birthday, location, last_login_at, create_time)
+        VALUES (#{userId}, #{nickname}, #{phone}, #{bio}, #{gender}, #{birthday}, #{location}, #{lastLoginAt}, NOW())
+    </insert>
+    
+    <update id="update" parameterType="com.wuli.badminton.pojo.UserDetail">
+        UPDATE user_detail
+        SET nickname = #{nickname},
+            phone = #{phone},
+            bio = #{bio},
+            gender = #{gender},
+            birthday = #{birthday},
+            location = #{location},
+            last_login_at = #{lastLoginAt},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper> 

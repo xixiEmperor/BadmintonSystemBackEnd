@@ -8,9 +8,17 @@
     <select id="findByEmail" resultType="com.wuli.badminton.pojo.User">
         SELECT * FROM user WHERE email = #{email}
     </select>
+    
+    <select id="findById" resultType="com.wuli.badminton.pojo.User">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
 
     <insert id="insert" parameterType="com.wuli.badminton.pojo.User" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user (username, password, role, avatar, email, create_time)
         VALUES (#{username}, #{password}, #{role}, #{avatar}, #{email}, NOW())
     </insert>
+    
+    <update id="updateAvatar">
+        UPDATE user SET avatar = #{avatar}, update_time = NOW() WHERE id = #{id}
+    </update>
 </mapper> 

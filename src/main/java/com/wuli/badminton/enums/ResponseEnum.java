@@ -88,7 +88,27 @@ public enum ResponseEnum {
     /**
      * 密码重置成功
      */
-    PASSWORD_RESET_SUCCESS(0, "密码重置成功");
+    PASSWORD_RESET_SUCCESS(0, "密码重置成功"),
+    
+    /**
+     * 文件格式不支持
+     */
+    FILE_TYPE_NOT_ALLOWED(2, "文件格式不支持，请上传jpg、png或jpeg格式图片"),
+    
+    /**
+     * 文件大小超过限制
+     */
+    FILE_SIZE_EXCEEDED(3, "文件大小超过限制，最大支持2MB"),
+    
+    /**
+     * 文件上传失败
+     */
+    FILE_UPLOAD_ERROR(4, "文件上传失败"),
+    
+    /**
+     * 头像更新成功
+     */
+    AVATAR_UPDATE_SUCCESS(0, "头像更新成功");
     
     /**
      * 状态码
