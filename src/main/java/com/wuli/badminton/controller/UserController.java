@@ -5,8 +5,6 @@ import com.wuli.badminton.dto.UserProfileDto;
 import com.wuli.badminton.dto.UserProfileUpdateDto;
 import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.User;
-import com.wuli.badminton.pojo.UserDetail;
-import com.wuli.badminton.service.UserDetailService;
 import com.wuli.badminton.service.UserService;
 import com.wuli.badminton.util.FileUtil;
 import com.wuli.badminton.vo.ResponseVo;
@@ -18,10 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -31,8 +25,6 @@ public class UserController {
     @Autowired
     private UserService userService;
     
-    @Autowired
-    private UserDetailService userDetailService;
 
     @GetMapping("/info")
     public ResponseEntity<?> getCurrentUser() {

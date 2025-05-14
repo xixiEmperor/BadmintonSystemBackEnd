@@ -67,9 +67,6 @@ public class UserServiceImpl implements UserService {
     public void save(User user) {
         logger.info("保存用户: {}", user.getUsername());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        if (user.getAvatar() == null) {
-            user.setAvatar("https://via.placeholder.com/150");
-        }
         userMapper.insert(user);
         
         // 创建对应的用户详情
