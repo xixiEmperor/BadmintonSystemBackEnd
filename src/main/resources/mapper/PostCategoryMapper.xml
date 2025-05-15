@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.PostCategoryMapper">
+    <resultMap id="categoryResultMap" type="com.wuli.badminton.pojo.PostCategory">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="code" column="code"/>
+        <result property="description" column="description"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+    
+    <sql id="categoryColumns">
+        id, name, code, description, sort_order, create_time, update_time
+    </sql>
+    
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.PostCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO post_category (
+            name, code, description, sort_order, create_time, update_time
+        ) VALUES (
+            #{name}, #{code}, #{description}, #{sortOrder}, NOW(), NOW()
+        )
+    </insert>
+    
+    <select id="findById" resultMap="categoryResultMap">
+        SELECT <include refid="categoryColumns"/>
+        FROM post_category
+        WHERE id = #{id}
+    </select>
+    
+    <select id="findByCode" resultMap="categoryResultMap">
+        SELECT <include refid="categoryColumns"/>
+        FROM post_category
+        WHERE code = #{code}
+    </select>
+    
+    <select id="findAll" resultMap="categoryResultMap">
+        SELECT <include refid="categoryColumns"/>
+        FROM post_category
+        ORDER BY sort_order ASC
+    </select>
+    
+    <update id="update" parameterType="com.wuli.badminton.pojo.PostCategory">
+        UPDATE post_category
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="code != null">code = #{code},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM post_category WHERE id = #{id}
+    </delete>
+</mapper> 

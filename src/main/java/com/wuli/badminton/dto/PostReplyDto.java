@@ -1,0 +1,57 @@
+package com.wuli.badminton.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
+import java.util.Date;
+
+/**
+ * 帖子回复数据传输对象
+ */
+@Data
+public class PostReplyDto {
+    /**
+     * 回复ID
+     */
+    private Long id;
+    
+    /**
+     * 所属帖子ID
+     */
+    private Long postId;
+    
+    /**
+     * 回复用户ID
+     */
+    private Long userId;
+    
+    /**
+     * 用户昵称
+     */
+    private String nickname;
+    
+    /**
+     * 用户名（备用）
+     */
+    private String username;
+    
+    /**
+     * 用户头像
+     */
+    private String avatar;
+    
+    /**
+     * 回复内容
+     */
+    private String content;
+    
+    /**
+     * 父回复ID（用于回复嵌套）
+     */
+    private Long parentId;
+    
+    /**
+     * 回复时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date replyTime;
+} 

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.PostMapper">
+    <resultMap id="postResultMap" type="com.wuli.badminton.pojo.Post">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="userId" column="user_id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="views" column="views"/>
+        <result property="replyCount" column="reply_count"/>
+        <result property="likes" column="likes"/>
+        <result property="status" column="status"/>
+        <result property="publishTime" column="create_time"/>
+        <result property="lastReplyTime" column="update_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+    
+    <sql id="postColumns">
+        id, title, content, user_id, category_id, views, reply_count as replyCount, 
+        likes, status, create_time as publishTime, update_time as lastReplyTime, create_time, update_time
+    </sql>
+    
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.Post" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO post (
+            title, content, user_id, category_id, views, reply_count, 
+            likes, status, create_time, update_time
+        ) VALUES (
+            #{title}, #{content}, #{userId}, #{categoryId}, #{views}, #{replyCount}, 
+            #{likes}, #{status}, NOW(), NOW()
+        )
+    </insert>
+    
+    <select id="findById" resultMap="postResultMap">
+        SELECT <include refid="postColumns"/>
+        FROM post
+        WHERE id = #{id}
+    </select>
+    
+    <update id="update" parameterType="com.wuli.badminton.pojo.Post">
+        UPDATE post
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="likes != null">likes = #{likes},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM post WHERE id = #{id}
+    </delete>
+    
+    <update id="incrementViews">
+        UPDATE post
+        SET views = views + 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+    
+    <update id="updateRepliesAndLastReplyTime">
+        UPDATE post p
+        SET p.reply_count = (SELECT COUNT(*) FROM post_reply WHERE post_id = #{id}),
+            p.update_time = NOW()
+        WHERE p.id = #{id}
+    </update>
+    
+    <select id="findByFilter" resultMap="postResultMap">
+        SELECT <include refid="postColumns"/>
+        FROM post
+        <where>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    title LIKE CONCAT('%', #{keyword}, '%')
+                    OR content LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        ORDER BY update_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+    
+    <select id="countByFilter" resultType="long">
+        SELECT COUNT(*)
+        FROM post
+        <where>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    title LIKE CONCAT('%', #{keyword}, '%')
+                    OR content LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+    </select>
+    
+    <select id="findHotPosts" resultMap="postResultMap">
+        SELECT <include refid="postColumns"/>
+        FROM post
+        ORDER BY views DESC, reply_count DESC, update_time DESC
+        LIMIT #{limit}
+    </select>
+</mapper> 

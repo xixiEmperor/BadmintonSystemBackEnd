@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.PostReplyMapper">
+    <resultMap id="replyResultMap" type="com.wuli.badminton.pojo.PostReply">
+        <id property="id" column="id"/>
+        <result property="postId" column="post_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="content" column="content"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="replyTime" column="create_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="status" column="status"/>
+    </resultMap>
+    
+    <sql id="replyColumns">
+        id, post_id, user_id, content, parent_id, create_time, update_time, status
+    </sql>
+    
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.PostReply" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO post_reply (
+            post_id, user_id, content, parent_id, status, create_time, update_time
+        ) VALUES (
+            #{postId}, #{userId}, #{content}, #{parentId}, 1, NOW(), NOW()
+        )
+    </insert>
+    
+    <select id="findById" resultMap="replyResultMap">
+        SELECT <include refid="replyColumns"/>
+        FROM post_reply
+        WHERE id = #{id}
+    </select>
+    
+    <select id="findByPostId" resultMap="replyResultMap">
+        SELECT <include refid="replyColumns"/>
+        FROM post_reply
+        WHERE post_id = #{postId}
+        ORDER BY create_time ASC
+    </select>
+    
+    <select id="findByParentId" resultMap="replyResultMap">
+        SELECT <include refid="replyColumns"/>
+        FROM post_reply
+        WHERE parent_id = #{parentId}
+        ORDER BY create_time ASC
+    </select>
+    
+    <update id="update" parameterType="com.wuli.badminton.pojo.PostReply">
+        UPDATE post_reply
+        <set>
+            <if test="content != null">content = #{content},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM post_reply WHERE id = #{id}
+    </delete>
+    
+    <select id="countByPostId" resultType="long">
+        SELECT COUNT(*)
+        FROM post_reply
+        WHERE post_id = #{postId}
+    </select>
+    
+    <select id="findLastReplyByPostId" resultMap="replyResultMap">
+        SELECT <include refid="replyColumns"/>
+        FROM post_reply
+        WHERE post_id = #{postId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+</mapper> 
