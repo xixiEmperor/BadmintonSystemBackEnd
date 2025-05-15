@@ -5,6 +5,7 @@ import com.wuli.badminton.dao.PostMapper;
 import com.wuli.badminton.dao.PostReplyMapper;
 import com.wuli.badminton.dao.UserMapper;
 import com.wuli.badminton.dao.PostLikeMapper;
+import com.wuli.badminton.dao.ReplyLikeMapper;
 import com.wuli.badminton.dto.PageResult;
 import com.wuli.badminton.dto.PostListDto;
 import com.wuli.badminton.dto.PostDetailDto;
@@ -15,6 +16,7 @@ import com.wuli.badminton.pojo.PostReply;
 import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.pojo.PostLike;
 import com.wuli.badminton.pojo.UserDetail;
+import com.wuli.badminton.pojo.ReplyLike;
 import com.wuli.badminton.service.ForumService;
 import com.wuli.badminton.service.UserDetailService;
 import org.slf4j.Logger;
@@ -53,6 +55,9 @@ public class ForumServiceImpl implements ForumService {
     
     @Autowired
     private PostLikeMapper postLikeMapper;
+    
+    @Autowired
+    private ReplyLikeMapper replyLikeMapper;
     
     @Override
     public PageResult<PostListDto> getPostList(String categoryCode, String keyword, int pageNum, int pageSize) {
@@ -102,20 +107,7 @@ public class ForumServiceImpl implements ForumService {
         return new PageResult<>(pageNum, pageSize, total, result);
     }
     
-    @Override
-    public List<PostListDto> getHotPosts(int limit) {
-        logger.info("获取热门帖子, limit={}", limit);
-        
-        if (limit <= 0) {
-            limit = 5;
-        }
-        
-        List<Post> hotPosts = postMapper.findHotPosts(limit);
-        List<PostListDto> result = convertToPostListDto(hotPosts);
-        
-        logger.info("查询热门帖子成功，共{}条", result.size());
-        return result;
-    }
+
     
     @Override
     public List<PostCategory> getAllCategories() {
@@ -204,7 +196,8 @@ public class ForumServiceImpl implements ForumService {
     public List<PostReply> getPostReplies(Long postId) {
         logger.info("获取帖子回复列表: postId={}", postId);
         
-        List<PostReply> replies = replyMapper.findByPostId(postId);
+        // 默认按点赞数排序
+        List<PostReply> replies = replyMapper.findByPostId(postId, "likes");
         logger.info("查询帖子回复成功，共{}条", replies.size());
         
         return replies;
@@ -318,43 +311,99 @@ public class ForumServiceImpl implements ForumService {
     }
     
     @Override
-    public List<PostReplyDto> getPostRepliesWithUserInfo(Long postId) {
-        logger.info("获取带用户信息的帖子回复列表: postId={}", postId);
+    public List<PostReplyDto> getPostRepliesWithUserInfo(Long postId, String orderBy) {
+        logger.info("获取带用户信息的帖子回复列表: postId={}, orderBy={}", postId, orderBy);
         
-        List<PostReply> replies = replyMapper.findByPostId(postId);
+        // 获取一级回复
+        List<PostReply> rootReplies = replyMapper.findByPostId(postId, orderBy);
         List<PostReplyDto> replyDtos = new ArrayList<>();
         
-        for (PostReply reply : replies) {
-            PostReplyDto dto = new PostReplyDto();
-            // 复制回复基本信息
-            dto.setId(reply.getId());
-            dto.setPostId(reply.getPostId());
-            dto.setUserId(reply.getUserId());
-            dto.setContent(reply.getContent());
-            dto.setParentId(reply.getParentId());
-            dto.setReplyTime(reply.getReplyTime());
+        // 尝试获取当前登录用户
+        User currentUser = null;
+        try {
+            currentUser = userMapper.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
+        } catch (Exception e) {
+            logger.info("获取当前用户失败，将以未登录状态处理: {}", e.getMessage());
+        }
+        
+        // 转换一级回复
+        for (PostReply reply : rootReplies) {
+            PostReplyDto dto = convertToReplyDto(reply, currentUser);
             
-            // 获取用户信息
-            User user = userMapper.findById(reply.getUserId());
-            if (user != null) {
-                dto.setUsername(user.getUsername());
-                dto.setAvatar(user.getAvatar());
-                
-                // 获取用户详情信息
-                UserDetail userDetail = userDetailService.findByUserId(reply.getUserId());
-                if (userDetail != null && userDetail.getNickname() != null && !userDetail.getNickname().isEmpty()) {
-                    dto.setNickname(userDetail.getNickname());
-                } else {
-                    // 如果昵称为空，则使用用户名
-                    dto.setNickname(user.getUsername());
-                }
-            }
+            // 获取子回复
+            dto.setChildren(getChildReplies(reply.getId(), orderBy, currentUser));
             
             replyDtos.add(dto);
         }
         
-        logger.info("带用户信息的帖子回复列表获取成功，共{}条", replyDtos.size());
+        logger.info("带用户信息的帖子回复列表获取成功，共{}条一级回复", replyDtos.size());
         return replyDtos;
+    }
+    
+    /**
+     * 获取子回复列表
+     * 
+     * @param parentId 父回复ID
+     * @param orderBy 排序方式
+     * @param currentUser 当前用户
+     * @return 子回复列表
+     */
+    private List<PostReplyDto> getChildReplies(Long parentId, String orderBy, User currentUser) {
+        List<PostReply> childReplies = replyMapper.findByParentId(parentId, orderBy);
+        List<PostReplyDto> childDtos = new ArrayList<>();
+        
+        for (PostReply childReply : childReplies) {
+            PostReplyDto childDto = convertToReplyDto(childReply, currentUser);
+            childDtos.add(childDto);
+        }
+        
+        return childDtos;
+    }
+    
+    /**
+     * 将 PostReply 实体转换为 PostReplyDto
+     * 
+     * @param reply 回复实体
+     * @param currentUser 当前用户
+     * @return 回复DTO
+     */
+    private PostReplyDto convertToReplyDto(PostReply reply, User currentUser) {
+        PostReplyDto dto = new PostReplyDto();
+        
+        // 复制回复基本信息
+        dto.setId(reply.getId());
+        dto.setPostId(reply.getPostId());
+        dto.setUserId(reply.getUserId());
+        dto.setContent(reply.getContent());
+        dto.setParentId(reply.getParentId());
+        dto.setReplyTime(reply.getReplyTime());
+        dto.setLikes(reply.getLikes());
+        
+        // 获取用户信息
+        User user = userMapper.findById(reply.getUserId());
+        if (user != null) {
+            dto.setUsername(user.getUsername());
+            dto.setAvatar(user.getAvatar());
+            
+            // 获取用户详情信息
+            UserDetail userDetail = userDetailService.findByUserId(reply.getUserId());
+            if (userDetail != null && userDetail.getNickname() != null && !userDetail.getNickname().isEmpty()) {
+                dto.setNickname(userDetail.getNickname());
+            } else {
+                // 如果昵称为空，则使用用户名
+                dto.setNickname(user.getUsername());
+            }
+        }
+        
+        // 设置点赞状态
+        if (currentUser != null) {
+            boolean isLiked = isReplyLiked(reply.getId(), currentUser.getId());
+            dto.setIsLiked(isLiked);
+        } else {
+            dto.setIsLiked(false);
+        }
+        
+        return dto;
     }
     
     /**
@@ -511,5 +560,82 @@ public class ForumServiceImpl implements ForumService {
         }
         
         return detailDto;
+    }
+    
+    @Override
+    @Transactional
+    public boolean likeReply(Long replyId, Long userId) {
+        logger.info("用户点赞回复: replyId={}, userId={}", replyId, userId);
+        
+        // 判断回复是否存在
+        PostReply reply = replyMapper.findById(replyId);
+        if (reply == null) {
+            logger.warn("点赞失败，回复不存在: replyId={}", replyId);
+            return false;
+        }
+        
+        // 判断是否已点赞
+        if (isReplyLiked(replyId, userId)) {
+            logger.info("用户已点赞该回复: replyId={}, userId={}", replyId, userId);
+            return true;
+        }
+        
+        // 创建点赞记录
+        ReplyLike replyLike = new ReplyLike();
+        replyLike.setReplyId(replyId);
+        replyLike.setUserId(userId);
+        
+        int rows = replyLikeMapper.insert(replyLike);
+        
+        if (rows > 0) {
+            // 更新回复点赞数
+            int likeCount = replyLikeMapper.countByReplyId(replyId);
+            replyMapper.updateLikes(replyId, likeCount);
+            
+            logger.info("点赞成功: replyId={}, userId={}, 当前点赞数={}", replyId, userId, likeCount);
+            return true;
+        } else {
+            logger.warn("点赞失败: replyId={}, userId={}", replyId, userId);
+            return false;
+        }
+    }
+    
+    @Override
+    @Transactional
+    public boolean unlikeReply(Long replyId, Long userId) {
+        logger.info("用户取消点赞回复: replyId={}, userId={}", replyId, userId);
+        
+        // 判断回复是否存在
+        PostReply reply = replyMapper.findById(replyId);
+        if (reply == null) {
+            logger.warn("取消点赞失败，回复不存在: replyId={}", replyId);
+            return false;
+        }
+        
+        // 判断是否已点赞
+        if (!isReplyLiked(replyId, userId)) {
+            logger.info("用户未点赞该回复，无需取消: replyId={}, userId={}", replyId, userId);
+            return true;
+        }
+        
+        int rows = replyLikeMapper.delete(replyId, userId);
+        
+        if (rows > 0) {
+            // 更新回复点赞数
+            int likeCount = replyLikeMapper.countByReplyId(replyId);
+            replyMapper.updateLikes(replyId, likeCount);
+            
+            logger.info("取消点赞成功: replyId={}, userId={}, 当前点赞数={}", replyId, userId, likeCount);
+            return true;
+        } else {
+            logger.warn("取消点赞失败: replyId={}, userId={}", replyId, userId);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean isReplyLiked(Long replyId, Long userId) {
+        ReplyLike replyLike = replyLikeMapper.findByReplyIdAndUserId(replyId, userId);
+        return replyLike != null;
     }
 } 

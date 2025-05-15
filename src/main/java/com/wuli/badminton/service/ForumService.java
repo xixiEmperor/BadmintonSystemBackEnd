@@ -26,14 +26,6 @@ public interface ForumService {
     PageResult<PostListDto> getPostList(String categoryCode, String keyword, int pageNum, int pageSize);
     
     /**
-     * 查询热门帖子
-     * 
-     * @param limit 限制条数
-     * @return 热门帖子列表
-     */
-    List<PostListDto> getHotPosts(int limit);
-    
-    /**
      * 查询所有分类
      * 
      * @return 分类列表
@@ -96,12 +88,13 @@ public interface ForumService {
     List<PostReply> getPostReplies(Long postId);
     
     /**
-     * 获取带有用户信息的帖子回复列表
+     * 获取带有用户信息的帖子回复列表，支持排序
      * 
      * @param postId 帖子ID
-     * @return 回复列表DTO
+     * @param orderBy 排序方式：likes-按点赞数排序，time-按时间排序，默认按点赞数
+     * @return 回复列表DTO，包含嵌套结构
      */
-    List<PostReplyDto> getPostRepliesWithUserInfo(Long postId);
+    List<PostReplyDto> getPostRepliesWithUserInfo(Long postId, String orderBy);
     
     /**
      * 添加回复
@@ -125,6 +118,33 @@ public interface ForumService {
      * @param postId 帖子ID
      */
     void updatePostRepliesInfo(Long postId);
+    
+    /**
+     * 用户点赞回复
+     * 
+     * @param replyId 回复ID
+     * @param userId 用户ID
+     * @return 是否点赞成功
+     */
+    boolean likeReply(Long replyId, Long userId);
+    
+    /**
+     * 用户取消点赞回复
+     * 
+     * @param replyId 回复ID
+     * @param userId 用户ID
+     * @return 是否取消成功
+     */
+    boolean unlikeReply(Long replyId, Long userId);
+    
+    /**
+     * 判断用户是否已点赞回复
+     * 
+     * @param replyId 回复ID
+     * @param userId 用户ID
+     * @return 是否已点赞
+     */
+    boolean isReplyLiked(Long replyId, Long userId);
     
     /**
      * 用户点赞帖子

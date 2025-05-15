@@ -3,6 +3,7 @@ package com.wuli.badminton.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 帖子回复数据传输对象
@@ -50,8 +51,23 @@ public class PostReplyDto {
     private Long parentId;
     
     /**
+     * 点赞数
+     */
+    private Integer likes;
+    
+    /**
+     * 当前用户是否已点赞
+     */
+    private Boolean isLiked;
+    
+    /**
      * 回复时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date replyTime;
+    
+    /**
+     * 子回复列表
+     */
+    private List<PostReplyDto> children;
 } 

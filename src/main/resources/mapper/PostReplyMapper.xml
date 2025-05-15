@@ -7,6 +7,7 @@
         <result property="userId" column="user_id"/>
         <result property="content" column="content"/>
         <result property="parentId" column="parent_id"/>
+        <result property="likes" column="likes"/>
         <result property="replyTime" column="create_time"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
@@ -14,14 +15,14 @@
     </resultMap>
     
     <sql id="replyColumns">
-        id, post_id, user_id, content, parent_id, create_time, update_time, status
+        id, post_id, user_id, content, parent_id, likes, create_time, update_time, status
     </sql>
     
     <insert id="insert" parameterType="com.wuli.badminton.pojo.PostReply" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO post_reply (
-            post_id, user_id, content, parent_id, status, create_time, update_time
+            post_id, user_id, content, parent_id, likes, status, create_time, update_time
         ) VALUES (
-            #{postId}, #{userId}, #{content}, #{parentId}, 1, NOW(), NOW()
+            #{postId}, #{userId}, #{content}, #{parentId}, 0, 1, NOW(), NOW()
         )
     </insert>
     
@@ -34,15 +35,25 @@
     <select id="findByPostId" resultMap="replyResultMap">
         SELECT <include refid="replyColumns"/>
         FROM post_reply
-        WHERE post_id = #{postId}
-        ORDER BY create_time ASC
+        WHERE post_id = #{postId} AND (parent_id IS NULL OR parent_id = 0)
+        <if test="orderBy != null and orderBy == 'likes'">
+            ORDER BY likes DESC, create_time DESC
+        </if>
+        <if test="orderBy == null or orderBy == 'time'">
+            ORDER BY create_time DESC
+        </if>
     </select>
     
     <select id="findByParentId" resultMap="replyResultMap">
         SELECT <include refid="replyColumns"/>
         FROM post_reply
         WHERE parent_id = #{parentId}
-        ORDER BY create_time ASC
+        <if test="orderBy != null and orderBy == 'likes'">
+            ORDER BY likes DESC, create_time DESC
+        </if>
+        <if test="orderBy == null or orderBy == 'time'">
+            ORDER BY create_time ASC
+        </if>
     </select>
     
     <update id="update" parameterType="com.wuli.badminton.pojo.PostReply">
@@ -50,6 +61,7 @@
         <set>
             <if test="content != null">content = #{content},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="likes != null">likes = #{likes},</if>
             update_time = NOW()
         </set>
         WHERE id = #{id}
@@ -72,4 +84,11 @@
         ORDER BY create_time DESC
         LIMIT 1
     </select>
+    
+    <update id="updateLikes">
+        UPDATE post_reply
+        SET likes = #{likes},
+            update_time = NOW()
+        WHERE id = #{replyId}
+    </update>
 </mapper> 

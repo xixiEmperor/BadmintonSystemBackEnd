@@ -39,6 +39,11 @@ public class PostReply {
     private Date replyTime;
     
     /**
+     * 点赞数量
+     */
+    private Integer likes;
+    
+    /**
      * 状态：0-删除，1-正常
      */
     private Integer status;

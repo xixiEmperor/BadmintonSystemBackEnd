@@ -80,7 +80,7 @@ public class ForumController {
     
     
     /**
-     * 创建新帖子（符合接口文档规范）
+     * 创建新帖子
      * 
      * @param requestBody 包含帖子信息的请求体
      * @return 创建结果，包含新帖子ID
@@ -233,11 +233,15 @@ public class ForumController {
      * 获取帖子回复列表
      * 
      * @param postId 帖子ID
+     * @param orderBy 排序方式：likes-按点赞数排序，time-按时间排序，默认按点赞数
      * @return 带用户信息的回复列表
      */
     @GetMapping("/posts/{postId}/replies")
-    public ResponseVo<List<PostReplyDto>> getPostReplies(@PathVariable Long postId) {
-        logger.info("获取帖子回复列表请求: postId={}", postId);
+    public ResponseVo<List<PostReplyDto>> getPostReplies(
+            @PathVariable Long postId,
+            @RequestParam(required = false, defaultValue = "likes") String orderBy) {
+        
+        logger.info("获取帖子回复列表请求: postId={}, orderBy={}", postId, orderBy);
         
         // 检查帖子是否存在
         Post post = forumService.getPostById(postId);
@@ -247,7 +251,7 @@ public class ForumController {
         }
         
         // 获取带用户信息的回复列表
-        List<PostReplyDto> replies = forumService.getPostRepliesWithUserInfo(postId);
+        List<PostReplyDto> replies = forumService.getPostRepliesWithUserInfo(postId, orderBy);
         
         return ResponseVo.success(replies);
     }
@@ -331,49 +335,7 @@ public class ForumController {
         }
     }
     
-    /**
-     * 获取帖子列表 (POST方式，用于接收JSON格式的请求)
-     * 
-     * @param requestBody 包含查询参数的请求体
-     * @return 帖子分页列表
-     */
-    @PostMapping("/posts")
-    public ResponseVo<PageResult<PostListDto>> getPostListByPost(@RequestBody Map<String, Object> requestBody) {
-        
-        // 提取请求参数
-        Integer page = 1;
-        Integer pageSize = 10;
-        String category = null;
-        String keyword = null;
-        
-        if (requestBody.containsKey("page")) {
-            page = Integer.parseInt(requestBody.get("page").toString());
-        }
-        
-        if (requestBody.containsKey("pageSize")) {
-            pageSize = Integer.parseInt(requestBody.get("pageSize").toString());
-        }
-        
-        if (requestBody.containsKey("category")) {
-            category = requestBody.get("category").toString();
-        }
-        
-        if (requestBody.containsKey("keyword")) {
-            keyword = requestBody.get("keyword").toString();
-        }
-        
-        logger.info("POST方式获取帖子列表请求: page={}, pageSize={}, category={}, keyword={}", 
-                page, pageSize, category, keyword);
-        
-        // 默认分类为"全部"
-        if (category == null || category.isEmpty()) {
-            category = "all";
-        }
-        
-        PageResult<PostListDto> result = forumService.getPostList(category, keyword, page, pageSize);
-        
-        return ResponseVo.success(result);
-    }
+
     
     /**
      * 获取符合接口文档的帖子详情
@@ -383,7 +345,7 @@ public class ForumController {
      */
     @GetMapping("/posts/detail")
     public ResponseVo<PostDetailDto> getPostDetailWithLiked(@RequestParam Long postId) {
-        logger.info("获取帖子详情(接口文档格式)请求: postId={}", postId);
+        logger.info("获取帖子详情请求: postId={}", postId);
         
         // 增加浏览次数
         forumService.incrementPostViews(postId);
@@ -456,6 +418,82 @@ public class ForumController {
         }
         
         boolean success = forumService.unlikePost(postId, currentUser.getId());
+        
+        if (success) {
+            return ResponseVo.success(true);
+        } else {
+            return ResponseVo.error(500, "取消点赞失败");
+        }
+    }
+    
+    /**
+     * 点赞回复
+     * 
+     * @param postId 帖子ID
+     * @param replyId 回复ID
+     * @return 点赞结果
+     */
+    @PostMapping("/posts/{postId}/replies/{replyId}/like")
+    public ResponseVo<Boolean> likeReply(@PathVariable Long postId, @PathVariable Long replyId) {
+        logger.info("点赞回复请求: postId={}, replyId={}", postId, replyId);
+        
+        // 获取当前用户
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            logger.warn("未登录用户尝试点赞回复");
+            return ResponseVo.error(401, "请先登录");
+        }
+        
+        // 检查回复是否存在
+        PostReply reply = forumService.getPostReplies(postId).stream()
+                .filter(r -> r.getId().equals(replyId))
+                .findFirst()
+                .orElse(null);
+        
+        if (reply == null) {
+            logger.warn("尝试点赞不存在的回复: replyId={}", replyId);
+            return ResponseVo.error(404, "回复不存在");
+        }
+        
+        boolean success = forumService.likeReply(replyId, currentUser.getId());
+        
+        if (success) {
+            return ResponseVo.success(true);
+        } else {
+            return ResponseVo.error(500, "点赞失败");
+        }
+    }
+    
+    /**
+     * 取消点赞回复
+     * 
+     * @param postId 帖子ID
+     * @param replyId 回复ID
+     * @return 取消点赞结果
+     */
+    @DeleteMapping("/posts/{postId}/replies/{replyId}/like")
+    public ResponseVo<Boolean> unlikeReply(@PathVariable Long postId, @PathVariable Long replyId) {
+        logger.info("取消点赞回复请求: postId={}, replyId={}", postId, replyId);
+        
+        // 获取当前用户
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            logger.warn("未登录用户尝试取消点赞回复");
+            return ResponseVo.error(401, "请先登录");
+        }
+        
+        // 检查回复是否存在
+        PostReply reply = forumService.getPostReplies(postId).stream()
+                .filter(r -> r.getId().equals(replyId))
+                .findFirst()
+                .orElse(null);
+        
+        if (reply == null) {
+            logger.warn("尝试取消点赞不存在的回复: replyId={}", replyId);
+            return ResponseVo.error(404, "回复不存在");
+        }
+        
+        boolean success = forumService.unlikeReply(replyId, currentUser.getId());
         
         if (success) {
             return ResponseVo.success(true);
