@@ -50,7 +50,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/*.css",
                 "/static/**",
                 "/api/auth/login",
-                "/api/auth/register"
+                "/api/auth/register",
+                    "/uploads/avatars/**"
             ).permitAll()
             .anyRequest().authenticated()
             .and()
