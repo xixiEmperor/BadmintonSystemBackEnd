@@ -125,4 +125,39 @@ public interface ForumService {
      * @param postId 帖子ID
      */
     void updatePostRepliesInfo(Long postId);
+    
+    /**
+     * 用户点赞帖子
+     * 
+     * @param postId 帖子ID
+     * @param userId 用户ID
+     * @return 是否点赞成功
+     */
+    boolean likePost(Long postId, Long userId);
+    
+    /**
+     * 用户取消点赞帖子
+     * 
+     * @param postId 帖子ID
+     * @param userId 用户ID
+     * @return 是否取消成功
+     */
+    boolean unlikePost(Long postId, Long userId);
+    
+    /**
+     * 判断用户是否已点赞帖子
+     * 
+     * @param postId 帖子ID
+     * @param userId 用户ID
+     * @return 是否已点赞
+     */
+    boolean isPostLiked(Long postId, Long userId);
+    
+    /**
+     * 获取符合接口文档的帖子详情
+     * 
+     * @param postId 帖子ID
+     * @return 帖子详情
+     */
+    PostDetailDto getPostDetail(Long postId);
 } 

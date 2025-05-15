@@ -6,6 +6,7 @@ import java.util.Date;
 
 /**
  * 帖子详情数据传输对象
+ * 符合接口文档要求的格式
  */
 @Data
 public class PostDetailDto {
@@ -25,37 +26,37 @@ public class PostDetailDto {
     private String content;
     
     /**
-     * 作者ID
+     * 作者ID（仅用于内部处理，不在API响应中返回）
      */
     private Long userId;
     
     /**
      * 作者昵称
      */
-    private String authorNickname;
+    private String author;
     
     /**
-     * 作者用户名（备用）
+     * 作者用户名（备用，仅用于内部处理）
      */
     private String authorUsername;
     
     /**
-     * 作者头像
+     * 作者头像（仅用于内部处理，不在API响应中返回）
      */
     private String authorAvatar;
     
     /**
-     * 分类ID
+     * 分类ID（仅用于内部处理，不在API响应中返回）
      */
     private Long categoryId;
     
     /**
      * 分类名称
      */
-    private String categoryName;
+    private String category;
     
     /**
-     * 分类代码
+     * 分类代码（仅用于内部处理，不在API响应中返回）
      */
     private String categoryCode;
     
@@ -70,14 +71,24 @@ public class PostDetailDto {
     private Integer replies;
     
     /**
+     * 点赞数量
+     */
+    private Integer likes;
+    
+    /**
+     * 当前用户是否已点赞
+     */
+    private Boolean isLiked;
+    
+    /**
      * 发布时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     private Date publishTime;
     
     /**
      * 最后回复时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date lastReplyTime;
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    private Date lastReply;
 } 

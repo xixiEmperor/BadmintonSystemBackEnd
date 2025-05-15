@@ -4,6 +4,7 @@ import com.wuli.badminton.dao.PostCategoryMapper;
 import com.wuli.badminton.dao.PostMapper;
 import com.wuli.badminton.dao.PostReplyMapper;
 import com.wuli.badminton.dao.UserMapper;
+import com.wuli.badminton.dao.PostLikeMapper;
 import com.wuli.badminton.dto.PageResult;
 import com.wuli.badminton.dto.PostListDto;
 import com.wuli.badminton.dto.PostDetailDto;
@@ -12,12 +13,14 @@ import com.wuli.badminton.pojo.Post;
 import com.wuli.badminton.pojo.PostCategory;
 import com.wuli.badminton.pojo.PostReply;
 import com.wuli.badminton.pojo.User;
+import com.wuli.badminton.pojo.PostLike;
 import com.wuli.badminton.pojo.UserDetail;
 import com.wuli.badminton.service.ForumService;
 import com.wuli.badminton.service.UserDetailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,9 @@ public class ForumServiceImpl implements ForumService {
     
     @Autowired
     private UserDetailService userDetailService;
+    
+    @Autowired
+    private PostLikeMapper postLikeMapper;
     
     @Override
     public PageResult<PostListDto> getPostList(String categoryCode, String keyword, int pageNum, int pageSize) {
@@ -279,8 +285,9 @@ public class ForumServiceImpl implements ForumService {
         detailDto.setUserId(post.getUserId());
         detailDto.setViews(post.getViews());
         detailDto.setReplies(post.getReplyCount());
+        detailDto.setLikes(post.getLikes());
         detailDto.setPublishTime(post.getPublishTime());
-        detailDto.setLastReplyTime(post.getLastReplyTime());
+        detailDto.setLastReply(post.getLastReplyTime());
         detailDto.setCategoryId(post.getCategoryId());
         
         // 获取作者信息
@@ -292,17 +299,17 @@ public class ForumServiceImpl implements ForumService {
             // 获取用户详情信息
             UserDetail userDetail = userDetailService.findByUserId(post.getUserId());
             if (userDetail != null && userDetail.getNickname() != null && !userDetail.getNickname().isEmpty()) {
-                detailDto.setAuthorNickname(userDetail.getNickname());
+                detailDto.setAuthor(userDetail.getNickname());
             } else {
                 // 如果昵称为空，则使用用户名
-                detailDto.setAuthorNickname(author.getUsername());
+                detailDto.setAuthor(author.getUsername());
             }
         }
         
         // 获取分类信息
         PostCategory category = categoryMapper.findById(post.getCategoryId());
         if (category != null) {
-            detailDto.setCategoryName(category.getName());
+            detailDto.setCategory(category.getName());
             detailDto.setCategoryCode(category.getCode());
         }
         
@@ -395,5 +402,114 @@ public class ForumServiceImpl implements ForumService {
         }
         
         return result;
+    }
+    
+    @Override
+    @Transactional
+    public boolean likePost(Long postId, Long userId) {
+        logger.info("用户点赞帖子: postId={}, userId={}", postId, userId);
+        
+        // 判断帖子是否存在
+        Post post = postMapper.findById(postId);
+        if (post == null) {
+            logger.warn("点赞失败，帖子不存在: postId={}", postId);
+            return false;
+        }
+        
+        // 判断是否已点赞
+        if (isPostLiked(postId, userId)) {
+            logger.info("用户已点赞该帖子: postId={}, userId={}", postId, userId);
+            return true;
+        }
+        
+        // 创建点赞记录
+        PostLike postLike = new PostLike();
+        postLike.setPostId(postId);
+        postLike.setUserId(userId);
+        
+        int rows = postLikeMapper.insert(postLike);
+        
+        if (rows > 0) {
+            // 更新帖子点赞数
+            post.setLikes(postLikeMapper.countByPostId(postId));
+            postMapper.update(post);
+            
+            logger.info("点赞成功: postId={}, userId={}, 当前点赞数={}", postId, userId, post.getLikes());
+            return true;
+        } else {
+            logger.warn("点赞失败: postId={}, userId={}", postId, userId);
+            return false;
+        }
+    }
+    
+    @Override
+    @Transactional
+    public boolean unlikePost(Long postId, Long userId) {
+        logger.info("用户取消点赞帖子: postId={}, userId={}", postId, userId);
+        
+        // 判断帖子是否存在
+        Post post = postMapper.findById(postId);
+        if (post == null) {
+            logger.warn("取消点赞失败，帖子不存在: postId={}", postId);
+            return false;
+        }
+        
+        // 判断是否已点赞
+        if (!isPostLiked(postId, userId)) {
+            logger.info("用户未点赞该帖子，无需取消: postId={}, userId={}", postId, userId);
+            return true;
+        }
+        
+        int rows = postLikeMapper.delete(postId, userId);
+        
+        if (rows > 0) {
+            // 更新帖子点赞数
+            post.setLikes(postLikeMapper.countByPostId(postId));
+            postMapper.update(post);
+            
+            logger.info("取消点赞成功: postId={}, userId={}, 当前点赞数={}", postId, userId, post.getLikes());
+            return true;
+        } else {
+            logger.warn("取消点赞失败: postId={}, userId={}", postId, userId);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean isPostLiked(Long postId, Long userId) {
+        PostLike postLike = postLikeMapper.findByPostIdAndUserId(postId, userId);
+        return postLike != null;
+    }
+    
+    @Override
+    public PostDetailDto getPostDetail(Long postId) {
+        logger.info("获取帖子详情(接口文档格式): postId={}", postId);
+        
+        // 获取带用户信息的帖子详情
+        PostDetailDto detailDto = getPostDetailWithUserInfo(postId);
+        if (detailDto == null) {
+            logger.warn("未找到指定帖子: id={}", postId);
+            return null;
+        }
+        
+        // 尝试获取当前登录用户
+        User currentUser = null;
+        try {
+            currentUser = userMapper.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
+        } catch (Exception e) {
+            logger.info("获取当前用户失败，将以未登录状态处理: {}", e.getMessage());
+        }
+        
+        // 设置是否已点赞
+        if (currentUser != null) {
+            boolean isLiked = isPostLiked(postId, currentUser.getId());
+            detailDto.setIsLiked(isLiked);
+            logger.info("当前用户 {} 是否已点赞该帖子: {}", currentUser.getUsername(), isLiked);
+        } else {
+            detailDto.setIsLiked(false);
+            logger.info("未登录用户，点赞状态设为 false");
+        }
+        
+        return detailDto;
     }
 } 

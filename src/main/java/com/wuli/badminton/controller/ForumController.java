@@ -78,45 +78,6 @@ public class ForumController {
         return ResponseVo.success(categories);
     }
     
-    /**
-     * 获取热门帖子
-     * 
-     * @param limit 数量限制
-     * @return 热门帖子列表
-     */
-    @GetMapping("/hot-posts")
-    public ResponseVo<List<PostListDto>> getHotPosts(
-            @RequestParam(defaultValue = "5") Integer limit) {
-        
-        logger.info("获取热门帖子请求: limit={}", limit);
-        
-        List<PostListDto> hotPosts = forumService.getHotPosts(limit);
-        
-        return ResponseVo.success(hotPosts);
-    }
-    
-    /**
-     * 获取帖子详情
-     * 
-     * @param id 帖子ID
-     * @return 带用户信息的帖子详情
-     */
-    @GetMapping("/posts/{id}")
-    public ResponseVo<PostDetailDto> getPostDetail(@PathVariable Long id) {
-        logger.info("获取帖子详情请求: id={}", id);
-        
-        // 增加浏览次数
-        forumService.incrementPostViews(id);
-        
-        // 获取带用户信息的帖子详情
-        PostDetailDto postDetail = forumService.getPostDetailWithUserInfo(id);
-        if (postDetail == null) {
-            logger.warn("未找到指定帖子: id={}", id);
-            return ResponseVo.error(404, "帖子不存在");
-        }
-        
-        return ResponseVo.success(postDetail);
-    }
     
     /**
      * 创建新帖子（符合接口文档规范）
@@ -182,32 +143,6 @@ public class ForumController {
         responseData.put("postId", postId);
         
         return ResponseVo.success("帖子发布成功", responseData);
-    }
-    
-    /**
-     * 创建帖子（原有方法）
-     * 
-     * @param post 帖子信息
-     * @return 创建结果
-     * @deprecated 请使用 {@link #createNewPost(Map)} 代替
-     */
-    @PostMapping("/posts")
-    public ResponseVo<Long> createPost(@RequestBody Post post) {
-        logger.info("创建帖子请求: title={}", post.getTitle());
-        
-        // 获取当前用户
-        User currentUser = userService.getCurrentUser();
-        if (currentUser == null) {
-            logger.warn("未登录用户尝试创建帖子");
-            return ResponseVo.error(401, "请先登录");
-        }
-        
-        // 设置作者ID
-        post.setUserId(currentUser.getId());
-        
-        Long postId = forumService.createPost(post);
-        
-        return ResponseVo.success(postId);
     }
     
     /**
@@ -438,5 +373,94 @@ public class ForumController {
         PageResult<PostListDto> result = forumService.getPostList(category, keyword, page, pageSize);
         
         return ResponseVo.success(result);
+    }
+    
+    /**
+     * 获取符合接口文档的帖子详情
+     * 
+     * @param postId 帖子ID
+     * @return 带有当前用户点赞状态的帖子详情
+     */
+    @GetMapping("/posts/detail")
+    public ResponseVo<PostDetailDto> getPostDetailWithLiked(@RequestParam Long postId) {
+        logger.info("获取帖子详情(接口文档格式)请求: postId={}", postId);
+        
+        // 增加浏览次数
+        forumService.incrementPostViews(postId);
+        
+        // 获取带用户信息的帖子详情
+        PostDetailDto postDetail = forumService.getPostDetail(postId);
+        if (postDetail == null) {
+            logger.warn("未找到指定帖子: id={}", postId);
+            return ResponseVo.error(404, "帖子不存在");
+        }
+        
+        return ResponseVo.success("请求成功", postDetail);
+    }
+    
+    /**
+     * 点赞帖子
+     * 
+     * @param postId 帖子ID
+     * @return 点赞结果
+     */
+    @PostMapping("/posts/{postId}/like")
+    public ResponseVo<Boolean> likePost(@PathVariable Long postId) {
+        logger.info("点赞帖子请求: postId={}", postId);
+        
+        // 获取当前用户
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            logger.warn("未登录用户尝试点赞帖子");
+            return ResponseVo.error(401, "请先登录");
+        }
+        
+        // 检查帖子是否存在
+        Post post = forumService.getPostById(postId);
+        if (post == null) {
+            logger.warn("尝试点赞不存在的帖子: postId={}", postId);
+            return ResponseVo.error(404, "帖子不存在");
+        }
+        
+        boolean success = forumService.likePost(postId, currentUser.getId());
+        
+        if (success) {
+            return ResponseVo.success(true);
+        } else {
+            return ResponseVo.error(500, "点赞失败");
+        }
+    }
+    
+    /**
+     * 取消点赞帖子
+     * 
+     * @param postId 帖子ID
+     * @return 取消点赞结果
+     */
+    @DeleteMapping("/posts/{postId}/like")
+    public ResponseVo<Boolean> unlikePost(@PathVariable Long postId) {
+        logger.info("取消点赞帖子请求: postId={}", postId);
+        
+        // 获取当前用户
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            logger.warn("未登录用户尝试取消点赞帖子");
+            return ResponseVo.error(401, "请先登录");
+        }
+        
+        // 检查帖子是否存在
+        Post post = forumService.getPostById(postId);
+        if (post == null) {
+            logger.warn("尝试取消点赞不存在的帖子: postId={}", postId);
+            return ResponseVo.error(404, "帖子不存在");
+        }
+        
+        boolean success = forumService.unlikePost(postId, currentUser.getId());
+        
+        if (success) {
+            return ResponseVo.success(true);
+        } else {
+            return ResponseVo.error(500, "取消点赞失败");
+        }
     }
 } 
