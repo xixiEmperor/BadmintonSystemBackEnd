@@ -2,7 +2,6 @@ package com.wuli.badminton.dao;
 
 import com.wuli.badminton.pojo.PostCategory;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 

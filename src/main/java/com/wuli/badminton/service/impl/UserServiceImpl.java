@@ -11,6 +11,7 @@ import com.wuli.badminton.dao.UserMapper;
 import com.wuli.badminton.service.UserDetailService;
 import com.wuli.badminton.service.UserService;
 import com.wuli.badminton.util.FileUtil;
+import com.wuli.badminton.util.UploadUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,11 +43,8 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserDetailService userDetailService;
     
-    @Value("${file.upload.path}")
-    private String uploadPath;
-    
-    @Value("${file.avatar.url}")
-    private String avatarBaseUrl;
+    @Autowired
+    private UploadUtil uploadUtil;
 
     @Override
     public User findByUsername(String username) {
@@ -153,49 +151,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ResponseEnum.NEED_LOGIN);
         }
         
-        // 生成唯一文件名
-        String filename = FileUtil.generateUniqueFilename(file.getOriginalFilename());
-        logger.info("生成的唯一文件名: {}", filename);
-        
         try {
-            // 确保上传目录存在
-            logger.info("当前配置的上传路径: {}", uploadPath);
-            File uploadDir = new File(uploadPath);
-            if (!uploadDir.exists()) {
-                logger.info("上传目录 {} 不存在，尝试创建", uploadPath);
-                boolean created = uploadDir.mkdirs();
-                if (!created) {
-                    logger.error("创建上传目录失败: {}", uploadPath);
-                    throw new IOException("无法创建上传目录: " + uploadPath);
-                }
-                logger.info("成功创建上传目录: {}", uploadPath);
-            } else if (!uploadDir.isDirectory()) {
-                logger.error("上传路径 {} 存在但不是一个目录", uploadPath);
-                throw new IOException("上传路径不是一个有效的目录: " + uploadPath);
-            } else if (!uploadDir.canWrite()) {
-                logger.error("上传目录 {} 不可写入", uploadPath);
-                throw new IOException("上传目录没有写入权限: " + uploadPath);
-            }
-            
-            // 打印实际使用的文件路径
-            File targetFile = new File(uploadDir, filename);
-            logger.info("即将保存文件到: {}", targetFile.getAbsolutePath());
-            
-            // 保存文件
-            String savedFilename = FileUtil.saveFile(file, uploadPath, filename);
-            logger.info("文件保存成功，返回文件名: {}", savedFilename);
-            
-            // 确认文件是否真的保存成功
-            File savedFile = new File(uploadDir, savedFilename);
-            if (!savedFile.exists()) {
-                logger.error("文件应该已保存，但在目录中未找到: {}", savedFile.getAbsolutePath());
-                throw new IOException("文件保存后无法确认: " + savedFile.getAbsolutePath());
-            }
-            logger.info("确认文件已保存到磁盘: {}", savedFile.getAbsolutePath());
-            
-            // 构建完整的URL路径
-            String avatarUrl = avatarBaseUrl + savedFilename;
-            logger.info("构建的头像URL: {}", avatarUrl);
+            // 使用阿里云OSS上传头像
+            logger.info("开始上传头像到阿里云OSS");
+            String avatarUrl = uploadUtil.upload(file);
+            logger.info("头像上传成功，OSS访问地址: {}", avatarUrl);
             
             // 更新用户头像URL
             user.setAvatar(avatarUrl);
