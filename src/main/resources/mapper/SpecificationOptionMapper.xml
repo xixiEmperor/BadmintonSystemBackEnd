@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.SpecificationOptionMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.SpecificationOption">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="product_id" property="productId" jdbcType="INTEGER"/>
+        <result column="spec_key" property="specKey" jdbcType="VARCHAR"/>
+        <result column="spec_values" property="specValues" typeHandler="com.wuli.badminton.handler.JsonTypeHandler"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, product_id, spec_key, spec_values, create_time, update_time
+    </sql>
+
+    <select id="findByProductId" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_specification_option
+        WHERE product_id = #{productId}
+    </select>
+
+    <select id="findByProductIdAndSpecKey" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_specification_option
+        WHERE product_id = #{productId} AND spec_key = #{specKey}
+    </select>
+
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.SpecificationOption" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mall_specification_option (
+            product_id, spec_key, spec_values, create_time, update_time
+        )
+        VALUES (
+            #{productId}, 
+            #{specKey}, 
+            #{specValues, typeHandler=com.wuli.badminton.handler.JsonTypeHandler}, 
+            NOW(), 
+            NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.wuli.badminton.pojo.SpecificationOption">
+        UPDATE mall_specification_option
+        <set>
+            <if test="specValues != null">
+                spec_values = #{specValues, typeHandler=com.wuli.badminton.handler.JsonTypeHandler},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM mall_specification_option
+        WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByProductId">
+        DELETE FROM mall_specification_option
+        WHERE product_id = #{productId}
+    </delete>
+</mapper> 

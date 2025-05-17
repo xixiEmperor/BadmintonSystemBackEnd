@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.MallCategoryMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.MallCategory">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="sort_order" property="sortOrder" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, status, sort_order, create_time, update_time
+    </sql>
+
+    <select id="findAllValid" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_category
+        WHERE status = 1
+        ORDER BY sort_order ASC
+    </select>
+
+    <select id="findById" resultMap="BaseResultMap" parameterType="java.lang.Integer">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_category
+        WHERE id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.MallCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mall_category (name, status, sort_order, create_time, update_time)
+        VALUES (#{name,jdbcType=VARCHAR}, #{status,jdbcType=TINYINT}, 
+                #{sortOrder,jdbcType=INTEGER}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.wuli.badminton.pojo.MallCategory">
+        UPDATE mall_category
+        <set>
+            <if test="name != null">
+                name = #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="status != null">
+                status = #{status,jdbcType=TINYINT},
+            </if>
+            <if test="sortOrder != null">
+                sort_order = #{sortOrder,jdbcType=INTEGER},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="delete" parameterType="java.lang.Integer">
+        UPDATE mall_category
+        SET status = 2, update_time = NOW()
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+</mapper> 

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.MallProductMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.MallProduct">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="category_id" property="categoryId" jdbcType="INTEGER"/>
+        <result column="category_name" property="categoryName" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="subtitle" property="subtitle" jdbcType="VARCHAR"/>
+        <result column="main_image" property="mainImage" jdbcType="VARCHAR"/>
+        <result column="sub_images" property="subImages" jdbcType="VARCHAR"/>
+        <result column="detail" property="detail" jdbcType="LONGVARCHAR"/>
+        <result column="price" property="price" jdbcType="DECIMAL"/>
+        <result column="stock" property="stock" jdbcType="INTEGER"/>
+        <result column="sales" property="sales" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="has_specification" property="hasSpecification" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, category_id, category_name, name, subtitle, main_image, sub_images, detail,
+        price, stock, sales, status, has_specification, create_time, update_time
+    </sql>
+
+    <select id="findList" parameterType="map" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product
+        <where>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%') OR subtitle LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            AND status != 3 <!-- 不查询已删除商品 -->
+        </where>
+        <if test="orderBy != null">
+            <choose>
+                <when test="orderBy == 'price_asc'">
+                    ORDER BY price ASC
+                </when>
+                <when test="orderBy == 'price_desc'">
+                    ORDER BY price DESC
+                </when>
+                <when test="orderBy == 'sales_desc'">
+                    ORDER BY sales DESC
+                </when>
+                <otherwise>
+                    ORDER BY id DESC
+                </otherwise>
+            </choose>
+        </if>
+        <if test="orderBy == null">
+            ORDER BY id DESC
+        </if>
+    </select>
+
+    <select id="findById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product
+        WHERE id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.MallProduct" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mall_product (
+            category_id, category_name, name, subtitle, main_image, sub_images, 
+            detail, price, stock, sales, status, create_time, update_time
+        ) 
+        VALUES (
+            #{categoryId,jdbcType=INTEGER}, #{categoryName,jdbcType=VARCHAR}, 
+            #{name,jdbcType=VARCHAR}, #{subtitle,jdbcType=VARCHAR}, 
+            #{mainImage,jdbcType=VARCHAR}, #{subImages,jdbcType=VARCHAR}, 
+            #{detail,jdbcType=LONGVARCHAR}, #{price,jdbcType=DECIMAL}, 
+            #{stock,jdbcType=INTEGER}, #{sales,jdbcType=INTEGER}, 
+            #{status,jdbcType=INTEGER}, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.wuli.badminton.pojo.MallProduct">
+        UPDATE mall_product
+        <set>
+            <if test="categoryId != null">
+                category_id = #{categoryId,jdbcType=INTEGER},
+            </if>
+            <if test="categoryName != null">
+                category_name = #{categoryName,jdbcType=VARCHAR},
+            </if>
+            <if test="name != null">
+                name = #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="subtitle != null">
+                subtitle = #{subtitle,jdbcType=VARCHAR},
+            </if>
+            <if test="mainImage != null">
+                main_image = #{mainImage,jdbcType=VARCHAR},
+            </if>
+            <if test="subImages != null">
+                sub_images = #{subImages,jdbcType=VARCHAR},
+            </if>
+            <if test="detail != null">
+                detail = #{detail,jdbcType=LONGVARCHAR},
+            </if>
+            <if test="price != null">
+                price = #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="stock != null">
+                stock = #{stock,jdbcType=INTEGER},
+            </if>
+            <if test="sales != null">
+                sales = #{sales,jdbcType=INTEGER},
+            </if>
+            <if test="status != null">
+                status = #{status,jdbcType=INTEGER},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE mall_product
+        SET status = #{status,jdbcType=INTEGER}, update_time = NOW()
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="updateStock">
+        UPDATE mall_product
+        SET stock = #{stock,jdbcType=INTEGER}, update_time = NOW()
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="increaseSales">
+        UPDATE mall_product
+        SET sales = sales + #{count,jdbcType=INTEGER}, update_time = NOW()
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+</mapper> 

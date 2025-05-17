@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.ProductSpecificationMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.ProductSpecification">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="product_id" property="productId" jdbcType="INTEGER"/>
+        <result column="specifications" property="specifications" typeHandler="com.wuli.badminton.handler.JsonTypeHandler"/>
+        <result column="price_adjustment" property="priceAdjustment" jdbcType="DECIMAL"/>
+        <result column="stock" property="stock" jdbcType="INTEGER"/>
+        <result column="sales" property="sales" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, product_id, specifications, price_adjustment, stock, sales, status, create_time, update_time
+    </sql>
+
+    <select id="findByProductId" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product_specification
+        WHERE product_id = #{productId} AND status = 1
+    </select>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product_specification
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByProductIdAndSpecifications" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product_specification
+        WHERE product_id = #{productId} 
+        AND JSON_CONTAINS(specifications, 
+                          <foreach collection="specifications" item="value" index="key" separator=" AND ">
+                              JSON_OBJECT(#{key}, #{value})
+                          </foreach>
+                          )
+        AND status = 1
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.ProductSpecification" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mall_product_specification (
+            product_id, specifications, price_adjustment, stock, sales, status, create_time, update_time
+        )
+        VALUES (
+            #{productId}, 
+            #{specifications, typeHandler=com.wuli.badminton.handler.JsonTypeHandler}, 
+            #{priceAdjustment}, 
+            #{stock}, 
+            #{sales}, 
+            #{status}, 
+            NOW(), 
+            NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.wuli.badminton.pojo.ProductSpecification">
+        UPDATE mall_product_specification
+        <set>
+            <if test="specifications != null">
+                specifications = #{specifications, typeHandler=com.wuli.badminton.handler.JsonTypeHandler},
+            </if>
+            <if test="priceAdjustment != null">
+                price_adjustment = #{priceAdjustment},
+            </if>
+            <if test="stock != null">
+                stock = #{stock},
+            </if>
+            <if test="sales != null">
+                sales = #{sales},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStock">
+        UPDATE mall_product_specification
+        SET stock = #{stock}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="increaseSales">
+        UPDATE mall_product_specification
+        SET sales = sales + #{count}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM mall_product_specification
+        WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByProductId">
+        DELETE FROM mall_product_specification
+        WHERE product_id = #{productId}
+    </delete>
+</mapper> 

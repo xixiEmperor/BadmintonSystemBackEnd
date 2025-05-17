@@ -68,7 +68,6 @@ public class AuthController {
             return ResponseVo.error(ResponseEnum.SERVER_ERROR);
         }
     }
-
     @PostMapping("/register")
     public ResponseVo<?> register(@RequestBody User user) {
         logger.info("尝试注册: {}", user.getUsername());
@@ -119,6 +118,7 @@ public class AuthController {
             logger.error("注册失败: {}, 错误: {}", user.getUsername(), e.getMessage());
             return ResponseVo.error(ResponseEnum.SERVER_ERROR);
         }
+        
     }
-
+    
 } 

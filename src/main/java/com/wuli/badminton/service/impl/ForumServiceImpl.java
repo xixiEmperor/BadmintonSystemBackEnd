@@ -86,15 +86,6 @@ public class ForumServiceImpl implements ForumService {
             }
         }
         
-        // 获取"热门"分类的特殊处理
-        if ("hot".equals(categoryCode)) {
-            List<Post> hotPosts = postMapper.findHotPosts(pageSize);
-            long total = hotPosts.size();
-            List<PostListDto> result = convertToPostListDto(hotPosts);
-            logger.info("查询热门帖子成功，共{}条", total);
-            return new PageResult<>(pageNum, pageSize, total, result);
-        }
-        
         // 查询帖子列表
         List<Post> posts = postMapper.findByFilter(categoryId, keyword, offset, pageSize);
         // 查询总记录数
@@ -104,7 +95,7 @@ public class ForumServiceImpl implements ForumService {
         List<PostListDto> result = convertToPostListDto(posts);
         
         logger.info("查询帖子列表成功，共{}条记录", total);
-        return new PageResult<>(pageNum, pageSize, total, result);
+        return PageResult.build(pageNum, pageSize, total, result);
     }
     
 
