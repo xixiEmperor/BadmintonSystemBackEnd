@@ -189,4 +189,22 @@ boolean setPostTopStatus(Long postId, boolean isTop);
      * @return 帖子详情
      */
     PostDetailDto getPostDetail(Long postId);
+    
+    /**
+     * 获取用户发帖列表
+     * 
+     * @param userId 用户ID
+     * @param pageNum 页码（从1开始）
+     * @param pageSize 每页大小
+     * @return 分页结果
+     */
+    PageResult<PostListDto> getUserPosts(Long userId, int pageNum, int pageSize);
+    
+    /**
+     * 根据ID获取回复
+     * 
+     * @param replyId 回复ID
+     * @return 回复对象，不存在则返回null
+     */
+    PostReply getReplyById(Long replyId);
 } 

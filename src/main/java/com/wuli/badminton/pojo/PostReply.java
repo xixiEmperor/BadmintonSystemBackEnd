@@ -57,4 +57,14 @@ public class PostReply {
      * 更新时间
      */
     private Date updateTime;
+    
+    /**
+     * 回复的目标回复ID（即实际回复的是哪条回复）
+     */
+    private Long replyToId;
+    
+    /**
+     * 回复的目标用户ID
+     */
+    private Long replyToUserId;
 } 

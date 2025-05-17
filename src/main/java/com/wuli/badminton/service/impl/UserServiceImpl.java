@@ -195,4 +195,14 @@ public class UserServiceImpl implements UserService {
             Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
         );
     }
+
+    @Override
+    public User getUserById(Long userId) {
+        logger.info("根据ID查询用户: {}", userId);
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            logger.warn("ID为{}的用户不存在", userId);
+        }
+        return user;
+    }
 } 

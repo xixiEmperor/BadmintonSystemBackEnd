@@ -99,4 +99,24 @@ public interface PostMapper {
      * @return 热门帖子列表
      */
     List<Post> findHotPosts(@Param("limit") int limit);
+
+    /**
+     * 根据用户ID查询帖子列表
+     * 
+     * @param userId 用户ID
+     * @param offset 分页起始位置
+     * @param limit 分页大小
+     * @return 帖子列表
+     */
+    List<Post> findByUserId(@Param("userId") Long userId, 
+                          @Param("offset") int offset, 
+                          @Param("limit") int limit);
+
+    /**
+     * 统计用户的帖子总数
+     * 
+     * @param userId 用户ID
+     * @return 该用户的帖子总数
+     */
+    long countByUserId(@Param("userId") Long userId);
 } 

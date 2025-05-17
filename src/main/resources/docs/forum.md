@@ -431,6 +431,76 @@
   "data": true
 }
 ```
+
+### 1.10 获取用户发帖列表
+
+**接口描述**：获取指定用户发布的所有帖子列表
+
+**请求URL**：`/api/forum/posts/user`
+
+**请求方式**：`GET`
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| userId | 是 | Long | 用户ID |
+| page | 否 | Integer | 页码，默认为1 |
+| pageSize | 否 | Integer | 每页数量，默认为10 |
+
+**响应参数**：
+
+| 参数名 | 类型 | 说明 |
+| ------ | ------ | ------ |
+| status | Integer | 响应状态码，0表示成功 |
+| msg | String | 响应消息 |
+| data | Object | 帖子分页数据 |
+| &emsp;pageNum | Integer | 当前页码 |
+| &emsp;pageSize | Integer | 每页数量 |
+| &emsp;total | Long | 总数量 |
+| &emsp;list | Array | 帖子列表 |
+| &emsp;&emsp;id | Long | 帖子ID |
+| &emsp;&emsp;title | String | 帖子标题 |
+| &emsp;&emsp;author | String | 作者昵称 |
+| &emsp;&emsp;avatar | String | 作者头像URL |
+| &emsp;&emsp;category | String | 分类名称 |
+| &emsp;&emsp;categoryCode | String | 分类代码 |
+| &emsp;&emsp;views | Integer | 浏览次数 |
+| &emsp;&emsp;replies | Integer | 回复数量 |
+| &emsp;&emsp;likes | Integer | 点赞数量 |
+| &emsp;&emsp;publishTime | Date | 发布时间 |
+| &emsp;&emsp;lastReply | Date | 最后回复时间 |
+| &emsp;&emsp;isTop | Boolean | 是否置顶 |
+
+**响应示例**：
+
+```json
+{
+  "status": 0,
+  "msg": "success",
+  "data": {
+    "pageNum": 1,
+    "pageSize": 10,
+    "total": 5,
+    "list": [
+      {
+        "id": 1,
+        "title": "求组队打羽毛球",
+        "author": "张三",
+        "avatar": "/uploads/avatars/user1.jpg",
+        "category": "打球组队",
+        "categoryCode": "team",
+        "views": 120,
+        "replies": 5,
+        "likes": 10,
+        "publishTime": "2023-05-15 14:30:00",
+        "lastReply": "2023-05-16 10:25:00",
+        "isTop": false
+      }
+    ]
+  }
+}
+```
 ## 2. 回复相关接口
 
 ### 2.1 获取帖子回复列表
@@ -456,24 +526,25 @@
 | ------ | ------ | ------ |
 | status | Integer | 响应状态码，0表示成功 |
 | msg | String | 响应消息 |
-| data | Object | 回复分页数据 |
-| &emsp;pageNum | Integer | 当前页码 |
-| &emsp;pageSize | Integer | 每页数量 |
-| &emsp;total | Long | 总数量 |
-| &emsp;list | Array | 回复列表 |
-| &emsp;&emsp;id | Long | 回复ID |
-| &emsp;&emsp;postId | Long | 所属帖子ID |
-| &emsp;&emsp;parentId | Long | 父回复ID（若为一级回复则为null） |
-| &emsp;&emsp;content | String | 回复内容 |
-| &emsp;&emsp;userId | Long | 回复者ID |
-| &emsp;&emsp;author | String | 回复者昵称 |
-| &emsp;&emsp;authorAvatar | String | 回复者头像URL |
-| &emsp;&emsp;likes | Integer | 点赞数 |
-| &emsp;&emsp;isLiked | Boolean | 当前用户是否已点赞 |
-| &emsp;&emsp;childReplies | Array | 子回复列表（若有的话） |
-| &emsp;&emsp;&emsp;id | Long | 子回复ID |
-| &emsp;&emsp;&emsp;... | ... | 子回复其他字段（同父回复） |
-| &emsp;&emsp;replyTime | Date | 回复时间 |
+| data | Array | 回复列表 |
+| &emsp;id | Long | 回复ID |
+| &emsp;postId | Long | 所属帖子ID |
+| &emsp;parentId | Long | 父回复ID（若为一级回复则为null） |
+| &emsp;content | String | 回复内容 |
+| &emsp;userId | Long | 回复者ID |
+| &emsp;username | String | 回复者用户名 |
+| &emsp;nickname | String | 回复者昵称 |
+| &emsp;avatar | String | 回复者头像URL |
+| &emsp;replyToId | Long | 回复目标ID（若不是对特定回复的回复则为null） |
+| &emsp;replyToUserId | Long | 回复目标用户ID |
+| &emsp;replyToUsername | String | 回复目标用户名 |
+| &emsp;replyToNickname | String | 回复目标用户昵称 |
+| &emsp;likes | Integer | 点赞数 |
+| &emsp;isLiked | Boolean | 当前用户是否已点赞 |
+| &emsp;children | Array | 子回复列表（若有的话） |
+| &emsp;&emsp;id | Long | 子回复ID |
+| &emsp;&emsp;... | ... | 子回复其他字段（同父回复） |
+| &emsp;replyTime | Date | 回复时间 |
 
 **响应示例**：
 
@@ -481,52 +552,62 @@
 {
   "status": 0,
   "msg": "success",
-  "data": {
-    "pageNum": 1,
-    "pageSize": 20,
-    "total": 5,
-    "list": [
-      {
-        "id": 101,
-        "postId": 1,
-        "parentId": null,
-        "content": "我可以一起，联系方式：123456",
-        "userId": 10002,
-        "author": "李四",
-        "authorAvatar": "/uploads/avatars/user2.jpg",
-        "likes": 3,
-        "isLiked": false,
-        "childReplies": [
-          {
-            "id": 105,
-            "postId": 1,
-            "parentId": 101,
-            "content": "我也想一起，请带上我",
-            "userId": 10003,
-            "author": "王五",
-            "authorAvatar": "/uploads/avatars/user3.jpg",
-            "likes": 1,
-            "isLiked": true,
-            "replyTime": "2023-05-15 16:10:00"
-          }
-        ],
-        "replyTime": "2023-05-15 15:30:00"
-      },
-      {
-        "id": 102,
-        "postId": 1,
-        "parentId": null,
-        "content": "我有兴趣，但是时间可能有点问题，可以改到周日吗？",
-        "userId": 10004,
-        "author": "赵六",
-        "authorAvatar": "/uploads/avatars/user4.jpg",
-        "likes": 0,
-        "isLiked": false,
-        "childReplies": [],
-        "replyTime": "2023-05-15 16:45:00"
-      }
-    ]
-  }
+  "data": [
+    {
+      "id": 101,
+      "postId": 1,
+      "parentId": null,
+      "content": "我可以一起，联系方式：123456",
+      "userId": 10002,
+      "username": "zhangsan",
+      "nickname": "张三",
+      "avatar": "/uploads/avatars/user1.jpg",
+      "replyToId": null,
+      "replyToUserId": null,
+      "replyToUsername": null,
+      "replyToNickname": null,
+      "likes": 3,
+      "isLiked": false,
+      "children": [
+        {
+          "id": 105,
+          "postId": 1,
+          "parentId": 101,
+          "content": "我也想一起，请带上我",
+          "userId": 10003,
+          "username": "wangwu",
+          "nickname": "王五",
+          "avatar": "/uploads/avatars/user3.jpg",
+          "replyToId": 101,
+          "replyToUserId": 10002,
+          "replyToUsername": "zhangsan",
+          "replyToNickname": "张三",
+          "likes": 1,
+          "isLiked": true,
+          "replyTime": "2023-05-15 16:10:00"
+        }
+      ],
+      "replyTime": "2023-05-15 15:30:00"
+    },
+    {
+      "id": 102,
+      "postId": 1,
+      "parentId": null,
+      "content": "我有兴趣，但是时间可能有点问题，可以改到周日吗？",
+      "userId": 10004,
+      "username": "zhaoliu",
+      "nickname": "赵六",
+      "avatar": "/uploads/avatars/user4.jpg",
+      "replyToId": null,
+      "replyToUserId": null,
+      "replyToUsername": null,
+      "replyToNickname": null,
+      "likes": 0,
+      "isLiked": false,
+      "children": [],
+      "replyTime": "2023-05-15 16:45:00"
+    }
+  ]
 }
 ```
 
@@ -534,7 +615,7 @@
 
 **接口描述**：发表回复（需登录）
 
-**请求URL**：`/api/forum/replies`
+**请求URL**：`/api/forum/posts/{postId}/replies`
 
 **请求方式**：`POST`
 
@@ -542,16 +623,20 @@
 
 | 参数名 | 必选 | 类型 | 说明 |
 | ------ | ------ | ------ | ------ |
-| postId | 是 | Long | 帖子ID |
-| parentId | 否 | Long | 父回复ID（如果回复其他回复） |
+| postId | 是 | Long | 帖子ID（路径参数） |
 | content | 是 | String | 回复内容 |
+| parentId | 否 | Long | 父回复ID（如果回复其他回复） |
+| replyToId | 否 | Long | 回复目标ID（具体回复的哪条回复） |
+| replyToUserId | 否 | Long | 回复目标用户ID |
 
 **请求示例**：
 
 ```json
 {
-  "postId": 1,
-  "content": "这个周六我有空，可以一起打"
+  "content": "这个周六我有空，可以一起打",
+  "parentId": 101,
+  "replyToId": 105,
+  "replyToUserId": 10003
 }
 ```
 
@@ -790,7 +875,7 @@
 }
 ```
 
-### 3.2 添加分类（管理员）
+### 3.2 添加分类（管理员） 
 
 **接口描述**：添加新的帖子分类（仅管理员可操作）
 

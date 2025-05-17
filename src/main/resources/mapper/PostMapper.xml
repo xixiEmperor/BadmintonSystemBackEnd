@@ -115,4 +115,18 @@
         ORDER BY views DESC, reply_count DESC, update_time DESC
         LIMIT #{limit}
     </select>
+    
+    <!-- 根据用户ID查询帖子列表 -->
+    <select id="findByUserId" resultType="com.wuli.badminton.pojo.Post">
+        SELECT * FROM post
+        WHERE user_id = #{userId} AND status = 1
+        ORDER BY is_top DESC, create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+    
+    <!-- 统计用户的帖子总数 -->
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM post
+        WHERE user_id = #{userId} AND status = 1
+    </select>
 </mapper> 

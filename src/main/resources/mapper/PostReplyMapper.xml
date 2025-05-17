@@ -7,6 +7,8 @@
         <result property="userId" column="user_id"/>
         <result property="content" column="content"/>
         <result property="parentId" column="parent_id"/>
+        <result property="replyToId" column="reply_to_id"/>
+        <result property="replyToUserId" column="reply_to_user_id"/>
         <result property="likes" column="likes"/>
         <result property="replyTime" column="create_time"/>
         <result property="createTime" column="create_time"/>
@@ -15,14 +17,14 @@
     </resultMap>
     
     <sql id="replyColumns">
-        id, post_id, user_id, content, parent_id, likes, create_time, update_time, status
+        id, post_id, user_id, content, parent_id, reply_to_id, reply_to_user_id, likes, create_time, update_time, status
     </sql>
     
     <insert id="insert" parameterType="com.wuli.badminton.pojo.PostReply" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO post_reply (
-            post_id, user_id, content, parent_id, likes, status, create_time, update_time
+            post_id, user_id, content, parent_id, reply_to_id, reply_to_user_id, likes, status, create_time, update_time
         ) VALUES (
-            #{postId}, #{userId}, #{content}, #{parentId}, 0, 1, NOW(), NOW()
+            #{postId}, #{userId}, #{content}, #{parentId}, #{replyToId}, #{replyToUserId}, 0, 1, NOW(), NOW()
         )
     </insert>
     
@@ -62,6 +64,8 @@
             <if test="content != null">content = #{content},</if>
             <if test="status != null">status = #{status},</if>
             <if test="likes != null">likes = #{likes},</if>
+            <if test="replyToId != null">reply_to_id = #{replyToId},</if>
+            <if test="replyToUserId != null">reply_to_user_id = #{replyToUserId},</if>
             update_time = NOW()
         </set>
         WHERE id = #{id}
@@ -91,4 +95,20 @@
             update_time = NOW()
         WHERE id = #{replyId}
     </update>
+    
+    <!-- 根据回复目标ID查询回复列表 -->
+    <select id="findByReplyToId" resultMap="replyResultMap">
+        SELECT <include refid="replyColumns"/>
+        FROM post_reply 
+        WHERE reply_to_id = #{replyToId} AND status = 1
+    </select>
+    
+    <!-- 批量删除回复 -->
+    <delete id="batchDelete">
+        DELETE FROM post_reply 
+        WHERE id IN 
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
 </mapper> 

@@ -70,4 +70,24 @@ public class PostReplyDto {
      * 子回复列表
      */
     private List<PostReplyDto> children;
+
+    /**
+     * 回复目标回复ID
+     */
+    private Long replyToId;
+
+    /**
+     * 回复目标的用户ID
+     */
+    private Long replyToUserId;
+
+    /**
+     * 回复目标的用户名
+     */
+    private String replyToUsername;
+
+    /**
+     * 回复目标的用户昵称
+     */
+    private String replyToNickname;
 } 

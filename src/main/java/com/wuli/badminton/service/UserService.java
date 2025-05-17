@@ -44,6 +44,13 @@ public interface UserService extends UserDetailsService {
      */
     AvatarResponseDto updateCurrentUserAvatar(MultipartFile file) throws IOException;
     
+    /**
+     * 根据用户ID查询用户信息
+     * @param userId 用户ID
+     * @return 用户对象，如果不存在则返回null
+     */
+    User getUserById(Long userId);
+    
     @Override
     UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;
 } 

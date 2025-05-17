@@ -245,7 +245,43 @@ public class ForumServiceImpl implements ForumService {
             return false;
         }
         
-        // 删除回复
+        // 查找所有直接引用此回复的子回复
+        List<PostReply> directChildren = replyMapper.findByParentId(replyId, "time_desc");
+        
+        // 查找所有以此回复为replyToId的回复
+        List<PostReply> referencingReplies = replyMapper.findByReplyToId(replyId);
+        
+        if (!directChildren.isEmpty() || !referencingReplies.isEmpty()) {
+            logger.info("删除的回复有子回复或被引用，总计{}条子回复，{}条引用", 
+                    directChildren.size(), referencingReplies.size());
+            
+            // 创建一个批量删除的列表
+            List<Long> replyIdsToDelete = new ArrayList<>();
+            
+            // 将子回复ID加入待删除列表
+            for (PostReply child : directChildren) {
+                replyIdsToDelete.add(child.getId());
+                
+                // 递归查找子回复的子回复并删除
+                collectChildRepliesRecursively(child.getId(), replyIdsToDelete);
+            }
+            
+            // 删除子回复
+            if (!replyIdsToDelete.isEmpty()) {
+                int batchDeleteCount = replyMapper.batchDelete(replyIdsToDelete);
+                logger.info("批量删除子回复数量: {}", batchDeleteCount);
+            }
+            
+            // 处理引用了此回复的其他回复
+            for (PostReply refReply : referencingReplies) {
+                // 清除引用关系，但保留回复本身
+                refReply.setReplyToId(null);
+                refReply.setReplyToUserId(null);
+                replyMapper.update(refReply);
+            }
+        }
+        
+        // 删除回复本身
         int rows = replyMapper.deleteById(replyId);
         if (rows > 0) {
             logger.info("回复删除成功: id={}", replyId);
@@ -257,6 +293,20 @@ public class ForumServiceImpl implements ForumService {
         } else {
             logger.warn("回复删除失败: id={}", replyId);
             return false;
+        }
+    }
+    
+    /**
+     * 递归收集子回复ID
+     * 
+     * @param parentId 父回复ID
+     * @param replyIds 回复ID集合
+     */
+    private void collectChildRepliesRecursively(Long parentId, List<Long> replyIds) {
+        List<PostReply> children = replyMapper.findByParentId(parentId, "time_desc");
+        for (PostReply child : children) {
+            replyIds.add(child.getId());
+            collectChildRepliesRecursively(child.getId(), replyIds);
         }
     }
     
@@ -394,6 +444,27 @@ public class ForumServiceImpl implements ForumService {
         dto.setParentId(reply.getParentId());
         dto.setReplyTime(reply.getReplyTime());
         dto.setLikes(reply.getLikes());
+        
+        // 设置回复目标信息
+        dto.setReplyToId(reply.getReplyToId());
+        dto.setReplyToUserId(reply.getReplyToUserId());
+        
+        // 获取回复目标用户信息（如果有的话）
+        if (reply.getReplyToUserId() != null) {
+            User replyToUser = userMapper.findById(reply.getReplyToUserId());
+            if (replyToUser != null) {
+                dto.setReplyToUsername(replyToUser.getUsername());
+                
+                // 获取用户详情信息
+                UserDetail replyToUserDetail = userDetailService.findByUserId(reply.getReplyToUserId());
+                if (replyToUserDetail != null && replyToUserDetail.getNickname() != null && !replyToUserDetail.getNickname().isEmpty()) {
+                    dto.setReplyToNickname(replyToUserDetail.getNickname());
+                } else {
+                    // 如果昵称为空，则使用用户名
+                    dto.setReplyToNickname(replyToUser.getUsername());
+                }
+            }
+        }
         
         // 获取用户信息
         User user = userMapper.findById(reply.getUserId());
@@ -654,5 +725,44 @@ public class ForumServiceImpl implements ForumService {
     public boolean isReplyLiked(Long replyId, Long userId) {
         ReplyLike replyLike = replyLikeMapper.findByReplyIdAndUserId(replyId, userId);
         return replyLike != null;
+    }
+    
+    @Override
+    public PageResult<PostListDto> getUserPosts(Long userId, int pageNum, int pageSize) {
+        logger.info("获取用户发帖列表: userId={}, 页码={}, 每页大小={}", userId, pageNum, pageSize);
+        
+        // 参数校验
+        if (pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize < 1) {
+            pageSize = 10;
+        }
+        
+        // 计算分页偏移量
+        int offset = (pageNum - 1) * pageSize;
+        
+        // 查询帖子列表
+        List<Post> posts = postMapper.findByUserId(userId, offset, pageSize);
+        // 查询总记录数
+        long total = postMapper.countByUserId(userId);
+        
+        // 转换为DTO
+        List<PostListDto> result = convertToPostListDto(posts);
+        
+        logger.info("查询用户帖子列表成功，共{}条记录", total);
+        return PageResult.build(pageNum, pageSize, total, result);
+    }
+    
+    @Override
+    public PostReply getReplyById(Long replyId) {
+        logger.info("根据ID获取回复: id={}", replyId);
+        
+        PostReply reply = replyMapper.findById(replyId);
+        if (reply == null) {
+            logger.warn("未找到指定回复: id={}", replyId);
+        }
+        
+        return reply;
     }
 } 

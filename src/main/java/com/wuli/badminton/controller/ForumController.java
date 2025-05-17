@@ -262,12 +262,32 @@ public class ForumController {
      * 添加帖子回复
      * 
      * @param postId 帖子ID
-     * @param reply 回复信息
+     * @param requestBody 回复信息
      * @return 添加结果
      */
     @PostMapping("/posts/{postId}/replies")
-    public ResponseVo<Long> addReply(@PathVariable Long postId, @RequestBody PostReply reply) {
+    public ResponseVo<Long> addReply(
+            @PathVariable Long postId, 
+            @RequestBody Map<String, Object> requestBody) {
+        
         logger.info("添加帖子回复请求: postId={}", postId);
+        
+        // 获取回复内容
+        String content = (String) requestBody.get("content");
+        // 获取父回复ID
+        Long parentId = requestBody.get("parentId") != null ? 
+                Long.valueOf(requestBody.get("parentId").toString()) : null;
+        // 获取回复目标ID
+        Long replyToId = requestBody.get("replyToId") != null ? 
+                Long.valueOf(requestBody.get("replyToId").toString()) : null;
+        // 获取回复目标用户ID
+        Long replyToUserId = requestBody.get("replyToUserId") != null ? 
+                Long.valueOf(requestBody.get("replyToUserId").toString()) : null;
+        
+        // 参数校验
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseVo.error(400, "回复内容不能为空");
+        }
         
         // 获取当前用户
         User currentUser = userService.getCurrentUser();
@@ -283,9 +303,48 @@ public class ForumController {
             return ResponseVo.error(404, "帖子不存在");
         }
         
+        // 创建final变量用于lambda表达式
+        final Long finalParentId = parentId;
+        // 如果指定了父回复，但父回复不存在，则清空父回复ID
+        Long updatedParentId = parentId;
+        if (finalParentId != null) {
+            PostReply parentReply = forumService.getPostReplies(postId).stream()
+                    .filter(r -> r.getId().equals(finalParentId))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (parentReply == null) {
+                logger.warn("指定的父回复不存在: parentId={}", finalParentId);
+                updatedParentId = null;
+            }
+        }
+        
+        // 创建final变量用于lambda表达式
+        final Long finalReplyToId = replyToId;
+        // 如果指定了回复目标，但回复目标不存在，则清空回复目标ID
+        Long updatedReplyToId = replyToId;
+        Long updatedReplyToUserId = replyToUserId;
+        if (finalReplyToId != null) {
+            PostReply replyTo = forumService.getPostReplies(postId).stream()
+                    .filter(r -> r.getId().equals(finalReplyToId))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (replyTo == null) {
+                logger.warn("指定的回复目标不存在: replyToId={}", finalReplyToId);
+                updatedReplyToId = null;
+                updatedReplyToUserId = null;
+            }
+        }
+        
         // 设置回复信息
+        PostReply reply = new PostReply();
         reply.setPostId(postId);
         reply.setUserId(currentUser.getId());
+        reply.setContent(content);
+        reply.setParentId(updatedParentId);
+        reply.setReplyToId(updatedReplyToId);
+        reply.setReplyToUserId(updatedReplyToUserId);
         
         Long replyId = forumService.addReply(reply);
         
@@ -311,14 +370,17 @@ public class ForumController {
         }
         
         // 检查回复是否存在
-        PostReply reply = forumService.getPostReplies(postId).stream()
-                .filter(r -> r.getId().equals(replyId))
-                .findFirst()
-                .orElse(null);
-        
+        PostReply reply = forumService.getReplyById(replyId);
         if (reply == null) {
             logger.warn("尝试删除不存在的回复: replyId={}", replyId);
             return ResponseVo.error(404, "回复不存在");
+        }
+        
+        // 检查回复是否属于指定帖子
+        if (!reply.getPostId().equals(postId)) {
+            logger.warn("回复不属于指定帖子: postId={}, replyId={}, actual postId={}", 
+                    postId, replyId, reply.getPostId());
+            return ResponseVo.error(400, "回复不属于指定帖子");
         }
         
         // 检查是否是回复作者本人或管理员
@@ -446,15 +508,19 @@ public class ForumController {
             return ResponseVo.error(401, "请先登录");
         }
         
-        // 检查回复是否存在
-        PostReply reply = forumService.getPostReplies(postId).stream()
-                .filter(r -> r.getId().equals(replyId))
-                .findFirst()
-                .orElse(null);
+        // 直接通过ID查询回复，包括所有层级的回复
+        PostReply reply = forumService.getReplyById(replyId);
         
         if (reply == null) {
             logger.warn("尝试点赞不存在的回复: replyId={}", replyId);
             return ResponseVo.error(404, "回复不存在");
+        }
+        
+        // 检查回复是否属于指定帖子
+        if (!reply.getPostId().equals(postId)) {
+            logger.warn("回复不属于指定帖子: postId={}, replyId={}, actual postId={}", 
+                    postId, replyId, reply.getPostId());
+            return ResponseVo.error(400, "回复不属于指定帖子");
         }
         
         boolean success = forumService.likeReply(replyId, currentUser.getId());
@@ -484,15 +550,19 @@ public class ForumController {
             return ResponseVo.error(401, "请先登录");
         }
         
-        // 检查回复是否存在
-        PostReply reply = forumService.getPostReplies(postId).stream()
-                .filter(r -> r.getId().equals(replyId))
-                .findFirst()
-                .orElse(null);
+        // 直接通过ID查询回复，包括所有层级的回复
+        PostReply reply = forumService.getReplyById(replyId);
         
         if (reply == null) {
             logger.warn("尝试取消点赞不存在的回复: replyId={}", replyId);
             return ResponseVo.error(404, "回复不存在");
+        }
+        
+        // 检查回复是否属于指定帖子
+        if (!reply.getPostId().equals(postId)) {
+            logger.warn("回复不属于指定帖子: postId={}, replyId={}, actual postId={}", 
+                    postId, replyId, reply.getPostId());
+            return ResponseVo.error(400, "回复不属于指定帖子");
         }
         
         boolean success = forumService.unlikeReply(replyId, currentUser.getId());
@@ -543,5 +613,34 @@ public ResponseVo<Boolean> setPostTopStatus(
     } else {
         return ResponseVo.error(500, "操作失败");
     }
+}
+
+/**
+ * 获取用户发帖列表
+ * 
+ * @param userId 用户ID
+ * @param page 当前页码
+ * @param pageSize 每页大小
+ * @return 帖子分页列表
+ */
+@GetMapping("/posts/user")
+public ResponseVo<PageResult<PostListDto>> getUserPosts(
+        @RequestParam Long userId,
+        @RequestParam(defaultValue = "1") Integer page,
+        @RequestParam(defaultValue = "10") Integer pageSize) {
+    
+    logger.info("获取用户发帖列表请求: userId={}, page={}, pageSize={}", 
+            userId, page, pageSize);
+    
+    // 查询用户信息
+    User user = userService.getUserById(userId);
+    if (user == null) {
+        logger.warn("查询不存在用户的发帖: userId={}", userId);
+        return ResponseVo.error(404, "用户不存在");
+    }
+    
+    PageResult<PostListDto> result = forumService.getUserPosts(userId, page, pageSize);
+    
+    return ResponseVo.success(result);
 }
 } 

@@ -85,4 +85,20 @@ public interface PostReplyMapper {
      * @return 影响的行数
      */
     int updateLikes(@Param("replyId") Long replyId, @Param("likes") int likes);
+    
+    /**
+     * 根据回复目标ID查询回复列表
+     * 
+     * @param replyToId 回复目标ID
+     * @return 回复列表
+     */
+    List<PostReply> findByReplyToId(@Param("replyToId") Long replyToId);
+    
+    /**
+     * 批量删除回复
+     * 
+     * @param ids 回复ID列表
+     * @return 影响的行数
+     */
+    int batchDelete(@Param("ids") List<Long> ids);
 } 
