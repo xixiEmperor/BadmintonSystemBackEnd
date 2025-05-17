@@ -46,7 +46,7 @@ public interface ForumService {
      * @param postId 帖子ID
      * @return 帖子详情DTO对象
      */
-    PostDetailDto getPostDetailWithUserInfo(Long postId);
+    PostDetailDto  getPostDetailWithUserInfo(Long postId);
     
     /**
      * 增加帖子浏览次数
@@ -79,6 +79,15 @@ public interface ForumService {
      */
     boolean deletePost(Long postId);
     
+    /**
+ * 设置帖子置顶状态
+ * 
+ * @param postId 帖子ID
+ * @param isTop 是否置顶：true-置顶，false-取消置顶
+ * @return 是否设置成功
+ */
+
+boolean setPostTopStatus(Long postId, boolean isTop);
     /**
      * 获取帖子回复列表
      * 

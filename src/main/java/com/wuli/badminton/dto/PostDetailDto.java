@@ -91,4 +91,9 @@ public class PostDetailDto {
      */
     @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     private Date lastReply;
+
+    /**
+     * 是否置顶
+     */
+    private Boolean isTop = false;
 } 

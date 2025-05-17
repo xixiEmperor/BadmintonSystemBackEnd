@@ -62,4 +62,9 @@ public class PostListDto {
      * 最后回复时间
      */
     private Date lastReply;
+
+    /**
+     * 是否置顶
+     */
+    private Boolean isTop = false;
 } 

@@ -1073,3 +1073,763 @@ function offSaleProduct(productId) {
 7. **缓存优化**：
    - 缓存分类列表等不常变化的数据
    - 使用LocalStorage存储用户偏好（如排序方式、每页显示数量）
+
+## 4. 商品规格功能
+
+商品规格功能允许商家为同一商品添加不同的规格组合（如颜色、尺寸等），每种组合可以有不同的价格调整和库存量。以下是实现商品规格功能的详细指南。
+
+### 4.1 规格功能概述
+
+商品规格系统由三个主要部分组成：
+1. **规格选项**：可选的规格属性和值（如颜色：红色、蓝色、黑色；尺寸：S、M、L等）
+2. **规格组合**：特定规格属性值的组合（如红色S码、蓝色M码等）及其对应的价格调整和库存
+3. **规格展示与选择**：前端用户界面，允许用户选择需要的规格组合
+
+### 4.2 后端实现
+
+后端已经实现以下功能：
+- 在商品表中添加`has_specification`字段标识商品是否有规格
+- 创建规格表存储具体规格组合信息
+- 创建规格选项表存储可选规格值信息
+- 提供相关API供前端调用
+
+### 4.3 前端规格展示实现
+
+#### 4.3.1 检测商品是否有规格
+
+```javascript
+function checkProductSpecifications(product) {
+  if (product.hasSpecification === 1) {
+    // 商品有规格，加载规格选项
+    this.loadSpecificationOptions(product.id);
+  } else {
+    // 商品无规格，直接显示价格和库存
+    this.selectedProduct = product;
+    this.canAddToCart = product.stock > 0;
+  }
+}
+```
+
+#### 4.3.2 加载规格选项
+
+```javascript
+function loadSpecificationOptions(productId) {
+  axios.get(`/api/mall/products/${productId}/spec_options`)
+    .then(response => {
+      if (response.data.status === 0) {
+        this.specOptions = response.data.data;
+        // 初始化选中规格
+        this.initSelectedSpecs();
+      }
+    })
+    .catch(error => {
+      console.error('获取规格选项失败:', error);
+    });
+}
+
+function initSelectedSpecs() {
+  // 初始化一个空的已选规格对象
+  this.selectedSpecs = {};
+  
+  // 可以默认选中第一个选项
+  this.specOptions.forEach(option => {
+    if (option.specValues && option.specValues.length > 0) {
+      this.selectedSpecs[option.specKey] = option.specValues[0];
+    }
+  });
+  
+  // 根据初始化的规格选择更新价格和库存
+  this.updateSpecificationDetails();
+}
+```
+
+#### 4.3.3 规格选择变更处理
+
+```javascript
+function changeSpecification(specKey, specValue) {
+  // 更新选中的规格
+  this.selectedSpecs[specKey] = specValue;
+  
+  // 获取更新后的价格和库存
+  this.updateSpecificationDetails();
+}
+
+function updateSpecificationDetails() {
+  // 发送请求获取选中规格组合的价格和库存
+  axios.post(`/api/mall/products/${this.productId}/specification`, this.selectedSpecs)
+    .then(response => {
+      if (response.data.status === 0) {
+        const specData = response.data.data;
+        this.selectedSpecification = specData;
+        
+        // 更新显示的价格（基础价格+调整值）
+        this.displayPrice = this.productDetail.price + specData.priceAdjustment;
+        
+        // 更新库存状态
+        this.canAddToCart = specData.stock > 0;
+        
+        // 存储规格ID，用于后续加入购物车
+        this.selectedSpecificationId = specData.id;
+      } else {
+        // 未找到匹配的规格组合
+        this.canAddToCart = false;
+        this.$message.warning('所选规格组合不可用');
+      }
+    })
+    .catch(error => {
+      console.error('获取规格详情失败:', error);
+      this.canAddToCart = false;
+    });
+}
+```
+
+#### 4.3.4 规格选择UI实现
+
+```html
+<template>
+  <div class="spec-selection" v-if="productDetail.hasSpecification === 1">
+    <div v-for="option in specOptions" :key="option.id" class="spec-group">
+      <div class="spec-title">{{ formatSpecKey(option.specKey) }}:</div>
+      <div class="spec-values">
+        <span 
+          v-for="value in option.specValues" 
+          :key="value"
+          :class="['spec-value', selectedSpecs[option.specKey] === value ? 'selected' : '']"
+          @click="changeSpecification(option.specKey, value)">
+          {{ value }}
+        </span>
+      </div>
+    </div>
+    
+    <div class="spec-price" v-if="selectedSpecification">
+      <span class="label">价格:</span>
+      <span class="value">¥{{ displayPrice.toFixed(2) }}</span>
+      <span class="original" v-if="selectedSpecification.priceAdjustment !== 0">
+        ({{ selectedSpecification.priceAdjustment > 0 ? '+' : '' }}{{ selectedSpecification.priceAdjustment }})
+      </span>
+    </div>
+    
+    <div class="spec-stock">
+      <span class="label">库存:</span>
+      <span class="value" :class="{ 'out-of-stock': !canAddToCart }">
+        {{ canAddToCart ? selectedSpecification.stock : '无货' }}
+      </span>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  methods: {
+    formatSpecKey(key) {
+      // 将规格键转换为用户友好的显示文本
+      const keyMap = {
+        'color': '颜色',
+        'size': '尺码',
+        'material': '材质',
+        'style': '款式'
+      };
+      return keyMap[key] || key;
+    }
+  }
+}
+</script>
+
+<style scoped>
+.spec-group {
+  margin-bottom: 15px;
+}
+.spec-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.spec-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.spec-value {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.spec-value:hover {
+  border-color: #ff6700;
+}
+.spec-value.selected {
+  border-color: #ff6700;
+  background-color: #ff67001a;
+  color: #ff6700;
+}
+.spec-price {
+  font-size: 18px;
+  margin: 15px 0;
+}
+.spec-price .value {
+  color: #ff6700;
+  font-weight: bold;
+}
+.spec-price .original {
+  font-size: 14px;
+  color: #666;
+}
+.out-of-stock {
+  color: #ff0000;
+}
+</style>
+```
+
+### 4.4 商品规格管理（管理员）
+
+#### 4.4.1 添加商品规格
+
+```javascript
+function addSpecification(productId, specData) {
+  axios.post(`/api/mall/products/${productId}/specifications`, specData)
+    .then(response => {
+      if (response.data.status === 0) {
+        this.$message.success('添加规格成功');
+        this.loadProductSpecifications(productId);
+      }
+    })
+    .catch(error => {
+      console.error('添加规格失败:', error);
+    });
+}
+```
+
+#### 4.4.2 更新商品规格
+
+```javascript
+function updateSpecification(specificationId, specData) {
+  axios.put(`/api/mall/specifications/${specificationId}`, specData)
+    .then(response => {
+      if (response.data.status === 0) {
+        this.$message.success('更新规格成功');
+        this.loadProductSpecifications(this.productId);
+      }
+    })
+    .catch(error => {
+      console.error('更新规格失败:', error);
+    });
+}
+```
+
+#### 4.4.3 删除商品规格
+
+```javascript
+function deleteSpecification(specificationId) {
+  this.$confirm('确定要删除该规格吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    axios.delete(`/api/mall/specifications/${specificationId}`)
+      .then(response => {
+        if (response.data.status === 0) {
+          this.$message.success('删除规格成功');
+          this.loadProductSpecifications(this.productId);
+        }
+      })
+      .catch(error => {
+        console.error('删除规格失败:', error);
+      });
+  }).catch(() => {
+    this.$message.info('已取消删除');
+  });
+}
+```
+
+#### 4.4.4 规格批量添加UI
+
+```html
+<template>
+  <div class="specification-manager">
+    <h3>规格管理</h3>
+    
+    <!-- 规格选项管理 -->
+    <div class="spec-options-section">
+      <h4>步骤1: 添加规格类型和选项</h4>
+      <div v-for="(options, index) in specOptionsForm" :key="index" class="spec-option-row">
+        <el-select v-model="options.key" placeholder="规格类型">
+          <el-option label="颜色" value="color"></el-option>
+          <el-option label="尺码" value="size"></el-option>
+          <el-option label="材质" value="material"></el-option>
+          <el-option label="款式" value="style"></el-option>
+          <el-option label="自定义" value="custom"></el-option>
+        </el-select>
+        
+        <el-input 
+          v-if="options.key === 'custom'" 
+          v-model="options.customKey" 
+          placeholder="自定义规格类型"
+          style="width: 150px; margin: 0 10px;">
+        </el-input>
+        
+        <el-select 
+          v-model="options.values" 
+          multiple
+          filterable
+          allow-create
+          default-first-option
+          placeholder="规格选项值">
+          <el-option 
+            v-for="item in getDefaultOptions(options.key)"
+            :key="item"
+            :label="item"
+            :value="item">
+          </el-option>
+        </el-select>
+        
+        <el-button 
+          v-if="index === specOptionsForm.length - 1" 
+          type="primary" 
+          icon="el-icon-plus" 
+          circle
+          @click="addSpecOptionRow">
+        </el-button>
+        
+        <el-button 
+          v-if="specOptionsForm.length > 1" 
+          type="danger" 
+          icon="el-icon-delete" 
+          circle
+          @click="removeSpecOptionRow(index)">
+        </el-button>
+      </div>
+    </div>
+    
+    <!-- 规格组合生成 -->
+    <div class="spec-combinations-section">
+      <h4>步骤2: 生成规格组合</h4>
+      <el-button type="primary" @click="generateSpecCombinations">生成规格组合</el-button>
+      
+      <div v-if="specCombinations.length > 0" class="combinations-table">
+        <el-table :data="specCombinations" border style="width: 100%; margin-top: 20px;">
+          <el-table-column label="规格组合">
+            <template slot-scope="scope">
+              <div v-for="(value, key) in scope.row.specs" :key="key">
+                {{ formatSpecKey(key) }}: {{ value }}
+              </div>
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="价格调整" width="150">
+            <template slot-scope="scope">
+              <el-input-number 
+                v-model="scope.row.priceAdjustment" 
+                :precision="2" 
+                :step="10"
+                :min="-1000"
+                :max="1000">
+              </el-input-number>
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="库存" width="150">
+            <template slot-scope="scope">
+              <el-input-number 
+                v-model="scope.row.stock" 
+                :min="0"
+                :max="9999">
+              </el-input-number>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <div class="actions">
+          <el-button type="primary" @click="saveAllSpecifications">保存所有规格</el-button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 现有规格管理 -->
+    <div class="existing-specs-section" v-if="existingSpecifications.length > 0">
+      <h4>现有规格组合</h4>
+      <el-table :data="existingSpecifications" border style="width: 100%">
+        <el-table-column label="规格组合">
+          <template slot-scope="scope">
+            <div v-for="(value, key) in scope.row.specifications" :key="key">
+              {{ formatSpecKey(key) }}: {{ value }}
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="价格调整" width="120">
+          <template slot-scope="scope">
+            {{ scope.row.priceAdjustment }}
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="库存" width="100">
+          <template slot-scope="scope">
+            {{ scope.row.stock }}
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="销量" width="100">
+          <template slot-scope="scope">
+            {{ scope.row.sales }}
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="操作" width="150">
+          <template slot-scope="scope">
+            <el-button 
+              type="primary" 
+              icon="el-icon-edit" 
+              size="mini" 
+              @click="editSpecification(scope.row)">
+            </el-button>
+            <el-button 
+              type="danger" 
+              icon="el-icon-delete" 
+              size="mini" 
+              @click="deleteSpecification(scope.row.id)">
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      productId: null,
+      specOptionsForm: [{ key: 'color', customKey: '', values: [] }],
+      specCombinations: [],
+      existingSpecifications: []
+    };
+  },
+  methods: {
+    getDefaultOptions(key) {
+      const optionsMap = {
+        'color': ['红色', '蓝色', '黑色', '白色', '灰色'],
+        'size': ['S', 'M', 'L', 'XL', 'XXL', '均码'],
+        'material': ['棉', '涤纶', '锦纶', '尼龙'],
+        'style': ['经典款', '修身款', '宽松款']
+      };
+      return optionsMap[key] || [];
+    },
+    
+    formatSpecKey(key) {
+      const keyMap = {
+        'color': '颜色',
+        'size': '尺码',
+        'material': '材质',
+        'style': '款式'
+      };
+      return keyMap[key] || key;
+    },
+    
+    addSpecOptionRow() {
+      this.specOptionsForm.push({ key: '', customKey: '', values: [] });
+    },
+    
+    removeSpecOptionRow(index) {
+      this.specOptionsForm.splice(index, 1);
+    },
+    
+    generateSpecCombinations() {
+      // 过滤有效的规格选项
+      const validOptions = this.specOptionsForm.filter(opt => {
+        const key = opt.key === 'custom' ? opt.customKey : opt.key;
+        return key && opt.values && opt.values.length > 0;
+      });
+      
+      if (validOptions.length === 0) {
+        this.$message.warning('请至少添加一个有效的规格选项');
+        return;
+      }
+      
+      // 生成规格选项数据结构
+      const optionsData = {};
+      validOptions.forEach(opt => {
+        const key = opt.key === 'custom' ? opt.customKey : opt.key;
+        optionsData[key] = opt.values;
+      });
+      
+      // 生成所有可能的组合
+      this.specCombinations = this.generateCombinations(optionsData);
+    },
+    
+    generateCombinations(optionsData) {
+      const keys = Object.keys(optionsData);
+      if (keys.length === 0) return [];
+      
+      // 递归生成所有组合
+      const combine = (index, current) => {
+        if (index === keys.length) {
+          return [{ 
+            specs: { ...current }, 
+            priceAdjustment: 0, 
+            stock: 100 
+          }];
+        }
+        
+        const key = keys[index];
+        const values = optionsData[key];
+        const result = [];
+        
+        values.forEach(value => {
+          const newCurrent = { ...current };
+          newCurrent[key] = value;
+          result.push(...combine(index + 1, newCurrent));
+        });
+        
+        return result;
+      };
+      
+      return combine(0, {});
+    },
+    
+    saveAllSpecifications() {
+      // 先保存规格选项
+      const specOptions = {};
+      this.specOptionsForm.forEach(opt => {
+        if (opt.values && opt.values.length > 0) {
+          const key = opt.key === 'custom' ? opt.customKey : opt.key;
+          if (key) {
+            specOptions[key] = opt.values;
+          }
+        }
+      });
+      
+      // 更新商品以启用规格
+      const productUpdate = {
+        hasSpecification: 1,
+        specOptions: specOptions
+      };
+      
+      // 保存所有生成的规格组合
+      const savePromises = this.specCombinations.map(combo => {
+        return axios.post(`/api/mall/products/${this.productId}/specifications`, {
+          specifications: combo.specs,
+          priceAdjustment: combo.priceAdjustment,
+          stock: combo.stock
+        });
+      });
+      
+      // 执行所有请求
+      Promise.all([
+        axios.put(`/api/mall/products/${this.productId}`, productUpdate),
+        ...savePromises
+      ])
+        .then(responses => {
+          this.$message.success('所有规格保存成功');
+          this.loadProductSpecifications();
+        })
+        .catch(error => {
+          console.error('保存规格失败:', error);
+          this.$message.error('保存规格失败');
+        });
+    },
+    
+    loadProductSpecifications() {
+      axios.get(`/api/mall/products/${this.productId}/specifications`)
+        .then(response => {
+          if (response.data.status === 0) {
+            this.existingSpecifications = response.data.data;
+          }
+        })
+        .catch(error => {
+          console.error('获取现有规格失败:', error);
+        });
+    }
+  },
+  created() {
+    // 初始化时获取商品ID和现有规格
+    this.productId = this.$route.params.productId;
+    if (this.productId) {
+      this.loadProductSpecifications();
+    }
+  }
+}
+</script>
+
+<style scoped>
+.specification-manager {
+  padding: 20px;
+}
+.spec-options-section, .spec-combinations-section, .existing-specs-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
+.spec-option-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.actions {
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
+```
+
+### 4.5 多规格业务逻辑
+
+#### 4.5.1 处理商品规格数据结构
+
+```javascript
+// 将规格数据结构化为前端可用格式
+function processSpecData(product, specifications, specOptions) {
+  // 基本商品信息
+  const result = {
+    ...product,
+    specGroups: []
+  };
+  
+  // 处理规格选项组
+  if (specOptions) {
+    Object.keys(specOptions).forEach(key => {
+      result.specGroups.push({
+        key: key,
+        title: formatSpecKey(key),
+        options: specOptions[key].map(value => ({
+          value: value,
+          disabled: !isSpecValueAvailable(specifications, key, value)
+        }))
+      });
+    });
+  }
+  
+  // 处理规格组合
+  result.specCombinations = specifications.map(spec => ({
+    id: spec.id,
+    specs: spec.specifications,
+    price: product.price + spec.priceAdjustment,
+    priceAdjustment: spec.priceAdjustment,
+    stock: spec.stock,
+    available: spec.stock > 0 && spec.status === 1
+  }));
+  
+  return result;
+}
+
+// 检查规格值是否有可用组合
+function isSpecValueAvailable(specifications, key, value) {
+  return specifications.some(spec => 
+    spec.specifications[key] === value && spec.stock > 0 && spec.status === 1
+  );
+}
+```
+
+#### 4.5.2 根据选择规格更新UI
+
+```javascript
+// 根据已选规格筛选可选择的其他规格选项
+function updateAvailableOptions() {
+  // 深拷贝当前选择的规格
+  const currentSelected = { ...this.selectedSpecs };
+  
+  // 遍历每个规格组
+  this.specData.specGroups.forEach(group => {
+    const specKey = group.key;
+    
+    // 遍历该组的每个选项
+    group.options.forEach(option => {
+      // 暂时忽略当前规格组的选择
+      const tempSelected = { ...currentSelected };
+      delete tempSelected[specKey];
+      
+      // 创建新的选择状态，包含当前评估的值
+      const testSelection = { 
+        ...tempSelected, 
+        [specKey]: option.value 
+      };
+      
+      // 检查是否有匹配的组合
+      option.disabled = !this.hasMatchingCombination(testSelection);
+    });
+  });
+}
+
+// 检查是否有匹配的规格组合
+function hasMatchingCombination(selection) {
+  // 获取选择的键
+  const selectedKeys = Object.keys(selection);
+  
+  // 查找匹配的组合
+  return this.specData.specCombinations.some(combo => {
+    // 检查每个已选规格是否匹配
+    return selectedKeys.every(key => 
+      combo.specs[key] === selection[key]
+    ) && combo.available;
+  });
+}
+
+// 自动选择第一个可用选项（默认选择）
+function autoSelectFirstAvailable() {
+  this.specData.specGroups.forEach(group => {
+    // 如果该规格类型还未选择
+    if (!this.selectedSpecs[group.key]) {
+      // 查找第一个可用选项
+      const firstAvailable = group.options.find(opt => !opt.disabled);
+      if (firstAvailable) {
+        this.selectedSpecs[group.key] = firstAvailable.value;
+      }
+    }
+  });
+}
+```
+
+#### 4.5.3 根据选择的规格找到匹配的规格组合
+
+```javascript
+// 获取当前选择的规格组合
+function getCurrentSpecCombination() {
+  // 检查是否已选择所有必要规格
+  const requiredKeys = this.specData.specGroups.map(g => g.key);
+  const selectedKeys = Object.keys(this.selectedSpecs);
+  
+  // 如果未选择所有必要规格，返回null
+  if (requiredKeys.some(key => !selectedKeys.includes(key))) {
+    return null;
+  }
+  
+  // 查找完全匹配的组合
+  return this.specData.specCombinations.find(combo => {
+    return requiredKeys.every(key => 
+      combo.specs[key] === this.selectedSpecs[key]
+    );
+  });
+}
+```
+
+### 4.6 最佳实践和注意事项
+
+1. **规格选择用户体验**：
+   - 禁用无效的规格组合选项，避免用户选择无库存的规格
+   - 提供直观的视觉反馈，如已选中的规格样式突出显示
+   - 动态更新价格和库存信息，帮助用户理解选择的影响
+
+2. **规格管理优化**：
+   - 提供批量添加和编辑规格的功能，提高管理效率
+   - 实现规格价格和库存的批量更新
+   - 提供规格库存预警和销售统计功能
+
+3. **性能考虑**：
+   - 对规格选项和组合进行缓存，减少不必要的API请求
+   - 使用前端计算避免频繁请求后端
+   - 大量规格组合时，考虑分页加载或按需加载
+
+4. **移动端适配**：
+   - 确保规格选择UI在移动设备上易于操作
+   - 优化触摸交互，提供足够大的点击区域
+   - 响应式设计确保在不同尺寸屏幕上的良好体验
+
+5. **错误处理**：
+   - 规格组合找不到时提供明确的错误提示
+   - 库存不足时及时通知用户
+   - 规格选择不完整时禁用"加入购物车"按钮
+
+这些指南和示例代码将帮助开发者实现一个功能完善的商品规格系统，提升用户购物体验和商家管理效率。

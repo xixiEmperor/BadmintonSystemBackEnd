@@ -98,7 +98,29 @@ public class ForumServiceImpl implements ForumService {
         return PageResult.build(pageNum, pageSize, total, result);
     }
     
-
+    @Override
+    @Transactional
+    public boolean setPostTopStatus(Long postId, boolean isTop) {
+        logger.info("设置帖子置顶状态: postId={}, isTop={}", postId, isTop);
+        
+        // 判断帖子是否存在
+        Post post = postMapper.findById(postId);
+        if (post == null) {
+            logger.warn("设置置顶状态失败，帖子不存在: postId={}", postId);
+            return false;
+        }
+        
+        int topStatus = isTop ? 1 : 0;
+        int rows = postMapper.updateTopStatus(postId, topStatus);
+        
+        if (rows > 0) {
+            logger.info("帖子置顶状态设置成功: postId={}, isTop={}", postId, isTop);
+            return true;
+        } else {
+            logger.warn("帖子置顶状态设置失败: postId={}", postId);
+            return false;
+        }
+    }
     
     @Override
     public List<PostCategory> getAllCategories() {
@@ -297,6 +319,9 @@ public class ForumServiceImpl implements ForumService {
             detailDto.setCategoryCode(category.getCode());
         }
         
+        // 添加置顶状态
+        detailDto.setIsTop(post.getIsTop() != null && post.getIsTop() == 1);
+        
         logger.info("带用户信息的帖子详情获取成功: id={}", postId);
         return detailDto;
     }
@@ -437,7 +462,8 @@ public class ForumServiceImpl implements ForumService {
                 dto.setCategory(category.getName());
                 dto.setCategoryCode(category.getCode());
             }
-            
+             // 添加置顶状态
+            dto.setIsTop(post.getIsTop() != null && post.getIsTop() == 1);
             result.add(dto);
         }
         

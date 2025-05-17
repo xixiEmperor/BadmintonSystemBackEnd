@@ -36,11 +36,13 @@
         <include refid="Base_Column_List"/>
         FROM mall_product_specification
         WHERE product_id = #{productId} 
-        AND JSON_CONTAINS(specifications, 
-                          <foreach collection="specifications" item="value" index="key" separator=" AND ">
-                              JSON_OBJECT(#{key}, #{value})
-                          </foreach>
-                          )
+        <if test="specifications != null and !specifications.isEmpty()">
+            AND (
+                <foreach collection="specifications.entrySet()" item="value" index="key" separator=" AND ">
+                    JSON_CONTAINS(specifications, JSON_OBJECT(#{key}, #{value}))
+                </foreach>
+            )
+        </if>
         AND status = 1
         LIMIT 1
     </select>

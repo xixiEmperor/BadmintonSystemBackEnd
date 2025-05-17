@@ -72,4 +72,10 @@ public class Post {
      * 更新时间
      */
     private Date updateTime;
+
+        /**
+     * 是否置顶：0-否，1-是
+     */
+    private Integer isTop = 0; // 默认值为0，表示不置顶
+    
 } 

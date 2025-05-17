@@ -50,6 +50,12 @@
         </set>
         WHERE id = #{id}
     </update>
+
+    <update id="updateTopStatus">
+    UPDATE post
+    SET is_top = #{isTop}, update_time = NOW()
+    WHERE id = #{postId}
+    </update>
     
     <delete id="deleteById">
         DELETE FROM post WHERE id = #{id}

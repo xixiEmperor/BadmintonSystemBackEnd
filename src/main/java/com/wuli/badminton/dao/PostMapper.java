@@ -35,6 +35,15 @@ public interface PostMapper {
      */
     int update(Post post);
     
+        /**
+     * 设置帖子置顶状态
+     * 
+     * @param postId 帖子ID
+     * @param isTop 置顶状态：0-不置顶，1-置顶
+     * @return 影响的行数
+     */
+    int updateTopStatus(@Param("postId") Long postId, @Param("isTop") Integer isTop);
+
     /**
      * 删除帖子
      * 

@@ -121,7 +121,9 @@ public class ForumController {
         post.setTitle(title);
         post.setContent(content);
         post.setUserId(currentUser.getId());
-        
+            
+        // 设置默认置顶状态为不置顶
+        post.setIsTop(0);
         // 根据分类代码获取分类ID
         PostCategory category = forumService.getAllCategories().stream()
                 .filter(c -> categoryCode.equals(c.getCode()))
@@ -501,4 +503,45 @@ public class ForumController {
             return ResponseVo.error(500, "取消点赞失败");
         }
     }
+    /**
+ * 设置帖子置顶状态（仅管理员可操作）
+ * 
+ * @param id 帖子ID
+ * @param isTop 是否置顶
+ * @return 设置结果
+ */
+@PutMapping("/posts/{id}/top")
+public ResponseVo<Boolean> setPostTopStatus(
+        @PathVariable Long id,
+        @RequestParam Boolean isTop) {
+    logger.info("设置帖子置顶状态请求: id={}, isTop={}", id, isTop);
+    
+    // 获取当前用户
+    User currentUser = userService.getCurrentUser();
+    if (currentUser == null) {
+        logger.warn("未登录用户尝试设置帖子置顶状态");
+        return ResponseVo.error(401, "请先登录");
+    }
+    
+    // 检查是否为管理员
+    if (!"ROLE_ADMIN".equals(currentUser.getRole())) {
+        logger.warn("非管理员用户尝试设置帖子置顶状态: userId={}", currentUser.getId());
+        return ResponseVo.error(403, "无权操作，仅管理员可设置置顶状态");
+    }
+    
+    // 检查帖子是否存在
+    Post existingPost = forumService.getPostById(id);
+    if (existingPost == null) {
+        logger.warn("尝试设置不存在帖子的置顶状态: id={}", id);
+        return ResponseVo.error(404, "帖子不存在");
+    }
+    
+    boolean success = forumService.setPostTopStatus(id, isTop);
+    
+    if (success) {
+        return ResponseVo.success(isTop ? "帖子已置顶" : "已取消置顶", true);
+    } else {
+        return ResponseVo.error(500, "操作失败");
+    }
+}
 } 
