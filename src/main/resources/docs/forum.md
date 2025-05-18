@@ -505,9 +505,9 @@
 
 ### 2.1 获取帖子回复列表
 
-**接口描述**：获取指定帖子的回复列表，支持分页和排序
+**接口描述**：获取指定帖子的回复列表，支持排序
 
-**请求URL**：`/api/forum/posts/{id}/replies`
+**请求URL**：`/api/forum/posts/{postId}/replies`
 
 **请求方式**：`GET`
 
@@ -515,9 +515,7 @@
 
 | 参数名 | 必选 | 类型 | 说明 |
 | ------ | ------ | ------ | ------ |
-| id | 是 | Long | 帖子ID（路径参数） |
-| page | 否 | Integer | 页码，默认为1 |
-| pageSize | 否 | Integer | 每页数量，默认为20 |
+| postId | 是 | Long | 帖子ID（路径参数） |
 | orderBy | 否 | String | 排序方式，可选值：`time_asc`（时间升序）、`time_desc`（时间降序，默认）、`likes`（点赞数） |
 
 **响应参数**：
@@ -526,7 +524,7 @@
 | ------ | ------ | ------ |
 | status | Integer | 响应状态码，0表示成功 |
 | msg | String | 响应消息 |
-| data | Array | 回复列表 |
+| data | Array | 回复列表（只包含一级回复） |
 | &emsp;id | Long | 回复ID |
 | &emsp;postId | Long | 所属帖子ID |
 | &emsp;parentId | Long | 父回复ID（若为一级回复则为null） |
@@ -541,10 +539,11 @@
 | &emsp;replyToNickname | String | 回复目标用户昵称 |
 | &emsp;likes | Integer | 点赞数 |
 | &emsp;isLiked | Boolean | 当前用户是否已点赞 |
-| &emsp;children | Array | 子回复列表（若有的话） |
-| &emsp;&emsp;id | Long | 子回复ID |
-| &emsp;&emsp;... | ... | 子回复其他字段（同父回复） |
 | &emsp;replyTime | Date | 回复时间 |
+| &emsp;children | Array | 子回复列表（递归结构，可包含多层嵌套） |
+| &emsp;&emsp;id | Long | 子回复ID |
+| &emsp;&emsp;... | ... | 子回复其他字段（同父级结构） |
+| &emsp;&emsp;children | Array | 子回复的子回复（递归结构） |
 
 **响应示例**：
 
@@ -568,6 +567,7 @@
       "replyToNickname": null,
       "likes": 3,
       "isLiked": false,
+      "replyTime": "2023-05-15 15:30:00",
       "children": [
         {
           "id": 105,
@@ -584,10 +584,29 @@
           "replyToNickname": "张三",
           "likes": 1,
           "isLiked": true,
-          "replyTime": "2023-05-15 16:10:00"
+          "replyTime": "2023-05-15 16:10:00",
+          "children": [
+            {
+              "id": 108,
+              "postId": 1,
+              "parentId": 105,
+              "content": "我也可以",
+              "userId": 10004,
+              "username": "lisi",
+              "nickname": "李四",
+              "avatar": "/uploads/avatars/user4.jpg",
+              "replyToId": 105,
+              "replyToUserId": 10003,
+              "replyToUsername": "wangwu",
+              "replyToNickname": "王五",
+              "likes": 0,
+              "isLiked": false,
+              "replyTime": "2023-05-15 16:30:00",
+              "children": []
+            }
+          ]
         }
-      ],
-      "replyTime": "2023-05-15 15:30:00"
+      ]
     },
     {
       "id": 102,
@@ -604,8 +623,8 @@
       "replyToNickname": null,
       "likes": 0,
       "isLiked": false,
-      "children": [],
-      "replyTime": "2023-05-15 16:45:00"
+      "replyTime": "2023-05-15 16:45:00",
+      "children": []
     }
   ]
 }
@@ -625,9 +644,13 @@
 | ------ | ------ | ------ | ------ |
 | postId | 是 | Long | 帖子ID（路径参数） |
 | content | 是 | String | 回复内容 |
-| parentId | 否 | Long | 父回复ID（如果回复其他回复） |
-| replyToId | 否 | Long | 回复目标ID（具体回复的哪条回复） |
-| replyToUserId | 否 | Long | 回复目标用户ID |
+| parentId | 否 | Long | 父回复ID（如果是嵌套回复，表示回复层级）|
+| replyToId | 否 | Long | 回复目标ID（具体回复的是哪条回复）|
+| replyToUserId | 否 | Long | 回复目标用户ID（具体回复的是哪个用户）|
+
+**请求说明**：
+- `parentId`：用于构建回复的层级结构。一级回复的parentId为null，二级及以下回复的parentId指向其父回复ID
+- `replyToId`与`replyToUserId`：用于标识具体回复目标，便于前端显示"回复@xxx"。对于一级回复，这两个字段通常为null
 
 **请求示例**：
 
@@ -646,8 +669,7 @@
 | ------ | ------ | ------ |
 | status | Integer | 响应状态码，0表示成功 |
 | msg | String | 响应消息 |
-| data | Object | 回复结果 |
-| &emsp;replyId | Long | 新创建的回复ID |
+| data | Long | 新创建的回复ID |
 
 **响应示例**：
 
@@ -655,9 +677,7 @@
 {
   "status": 0,
   "msg": "回复成功",
-  "data": {
-    "replyId": 106
-  }
+  "data": 106
 }
 ```
 

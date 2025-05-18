@@ -68,7 +68,7 @@ public class PostDetailDto {
     /**
      * 回复数量
      */
-    private Integer replies;
+    private Integer replyCount = 0;
     
     /**
      * 点赞数量

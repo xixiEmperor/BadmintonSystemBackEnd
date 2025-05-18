@@ -46,7 +46,7 @@ public class PostListDto {
     /**
      * 回复数量
      */
-    private Integer replies;
+    private Integer replyCount;
     
     /**
      * 点赞数量

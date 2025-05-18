@@ -332,6 +332,7 @@ public class ForumServiceImpl implements ForumService {
             logger.warn("未找到指定帖子: id={}", postId);
             return null;
         }
+
         
         PostDetailDto detailDto = new PostDetailDto();
         // 复制帖子基本信息
@@ -340,12 +341,14 @@ public class ForumServiceImpl implements ForumService {
         detailDto.setContent(post.getContent());
         detailDto.setUserId(post.getUserId());
         detailDto.setViews(post.getViews());
-        detailDto.setReplies(post.getReplyCount());
+        
+        // 确保设置非null值
+        detailDto.setReplyCount(post.getReplyCount() != null ? post.getReplyCount() : 0);
+        
         detailDto.setLikes(post.getLikes());
         detailDto.setPublishTime(post.getPublishTime());
         detailDto.setLastReply(post.getLastReplyTime());
         detailDto.setCategoryId(post.getCategoryId());
-        
         // 获取作者信息
         User author = userMapper.findById(post.getUserId());
         if (author != null) {
@@ -371,6 +374,9 @@ public class ForumServiceImpl implements ForumService {
         
         // 添加置顶状态
         detailDto.setIsTop(post.getIsTop() != null && post.getIsTop() == 1);
+        
+        // 打印最终DTO信息，用于调试
+        logger.info("构建的帖子详情DTO: id={}, replyCount={}", detailDto.getId(), detailDto.getReplyCount());
         
         logger.info("带用户信息的帖子详情获取成功: id={}", postId);
         return detailDto;
@@ -420,6 +426,15 @@ public class ForumServiceImpl implements ForumService {
         
         for (PostReply childReply : childReplies) {
             PostReplyDto childDto = convertToReplyDto(childReply, currentUser);
+            
+            // 递归获取子回复的子回复
+            List<PostReply> grandChildReplies = replyMapper.findByParentId(childReply.getId(), orderBy);
+            if (!grandChildReplies.isEmpty()) {
+                childDto.setChildren(getChildReplies(childReply.getId(), orderBy, currentUser));
+            } else {
+                childDto.setChildren(new ArrayList<>());
+            }
+            
             childDtos.add(childDto);
         }
         
@@ -507,7 +522,7 @@ public class ForumServiceImpl implements ForumService {
             dto.setId(post.getId());
             dto.setTitle(post.getTitle());
             dto.setViews(post.getViews());
-            dto.setReplies(post.getReplyCount());
+            dto.setReplyCount(post.getReplyCount());
             dto.setLikes(post.getLikes());
             dto.setPublishTime(post.getPublishTime());
             dto.setLastReply(post.getLastReplyTime());

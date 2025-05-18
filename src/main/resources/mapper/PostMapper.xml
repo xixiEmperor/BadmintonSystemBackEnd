@@ -15,11 +15,12 @@
         <result property="lastReplyTime" column="update_time"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
+        <result property="isTop" column="is_top"/>
     </resultMap>
     
     <sql id="postColumns">
-        id, title, content, user_id, category_id, views, reply_count as replyCount, 
-        likes, status, create_time as publishTime, update_time as lastReplyTime, create_time, update_time
+        id, title, content, user_id, category_id, views, reply_count, 
+        likes, status, create_time as publishTime, update_time as lastReplyTime, create_time, update_time, is_top
     </sql>
     
     <insert id="insert" parameterType="com.wuli.badminton.pojo.Post" useGeneratedKeys="true" keyProperty="id">
@@ -89,7 +90,7 @@
                 )
             </if>
         </where>
-        ORDER BY update_time DESC
+        ORDER BY is_top DESC, update_time DESC
         LIMIT #{offset}, #{limit}
     </select>
     
@@ -117,8 +118,9 @@
     </select>
     
     <!-- 根据用户ID查询帖子列表 -->
-    <select id="findByUserId" resultType="com.wuli.badminton.pojo.Post">
-        SELECT * FROM post
+    <select id="findByUserId" resultMap="postResultMap">
+        SELECT <include refid="postColumns"/>
+        FROM post
         WHERE user_id = #{userId} AND status = 1
         ORDER BY is_top DESC, create_time DESC
         LIMIT #{offset}, #{limit}

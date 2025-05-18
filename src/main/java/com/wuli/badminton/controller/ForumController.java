@@ -303,35 +303,27 @@ public class ForumController {
             return ResponseVo.error(404, "帖子不存在");
         }
         
-        // 创建final变量用于lambda表达式
-        final Long finalParentId = parentId;
         // 如果指定了父回复，但父回复不存在，则清空父回复ID
         Long updatedParentId = parentId;
-        if (finalParentId != null) {
-            PostReply parentReply = forumService.getPostReplies(postId).stream()
-                    .filter(r -> r.getId().equals(finalParentId))
-                    .findFirst()
-                    .orElse(null);
+        if (parentId != null) {
+            // 直接通过ID查询回复，包含所有层级的回复
+            PostReply parentReply = forumService.getReplyById(parentId);
             
-            if (parentReply == null) {
-                logger.warn("指定的父回复不存在: parentId={}", finalParentId);
+            if (parentReply == null || !parentReply.getPostId().equals(postId)) {
+                logger.warn("指定的父回复不存在或不属于该帖子: parentId={}, postId={}", parentId, postId);
                 updatedParentId = null;
             }
         }
         
-        // 创建final变量用于lambda表达式
-        final Long finalReplyToId = replyToId;
         // 如果指定了回复目标，但回复目标不存在，则清空回复目标ID
         Long updatedReplyToId = replyToId;
         Long updatedReplyToUserId = replyToUserId;
-        if (finalReplyToId != null) {
-            PostReply replyTo = forumService.getPostReplies(postId).stream()
-                    .filter(r -> r.getId().equals(finalReplyToId))
-                    .findFirst()
-                    .orElse(null);
+        if (replyToId != null) {
+            // 直接通过ID查询回复，包含所有层级的回复
+            PostReply replyTo = forumService.getReplyById(replyToId);
             
-            if (replyTo == null) {
-                logger.warn("指定的回复目标不存在: replyToId={}", finalReplyToId);
+            if (replyTo == null || !replyTo.getPostId().equals(postId)) {
+                logger.warn("指定的回复目标不存在或不属于该帖子: replyToId={}, postId={}", replyToId, postId);
                 updatedReplyToId = null;
                 updatedReplyToUserId = null;
             }
