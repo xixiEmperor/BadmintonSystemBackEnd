@@ -15,6 +15,7 @@ public class ProductListDto {
     private String subtitle;     // 商品副标题
     private String mainImage;    // 主图
     private BigDecimal price;    // 价格
+    private Integer stock;       // 库存
     private Integer sales;       // 销量
     private Integer status;      // 状态
 } 

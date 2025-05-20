@@ -25,6 +25,18 @@ public interface MallProductService {
     PageResult<ProductListDto> getProductList(String categoryId, String keyword, Integer pageNum, Integer pageSize, String orderBy);
     
     /**
+     * 管理员获取商品列表（包括全部状态）
+     * @param categoryId 分类ID，为"all"时表示所有分类
+     * @param keyword 搜索关键词
+     * @param status 状态（null表示所有状态）
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @param orderBy 排序方式：price_asc, price_desc, sales_desc
+     * @return 分页的商品列表
+     */
+    PageResult<ProductListDto> getAdminProductList(String categoryId, String keyword, Integer status, Integer pageNum, Integer pageSize, String orderBy);
+    
+    /**
      * 获取商品详情
      * @param productId 商品ID
      * @return 商品详情

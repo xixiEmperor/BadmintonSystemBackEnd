@@ -106,6 +106,79 @@ public class MallController {
     }
     
     /**
+     * 管理员获取商品列表（包括全部状态）
+     * @param categoryId 分类ID
+     * @param keyword 搜索关键词
+     * @param status 状态（null表示所有状态，1-在售，2-下架，3-删除）
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @param orderBy 排序方式
+     * @return 商品列表
+     */
+    @GetMapping("/admin/products")
+    public ResponseVo<PageResult<ProductListDto>> getAdminProductList(
+            @RequestParam(required = false, defaultValue = "all") String categoryId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false, defaultValue = "1") Integer pageNum,
+            @RequestParam(required = false, defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String orderBy) {
+        
+        logger.info("管理员获取商品列表: categoryId={}, keyword={}, status={}, pageNum={}, pageSize={}, orderBy={}", 
+                categoryId, keyword, status, pageNum, pageSize, orderBy);
+        
+        // 检查用户是否已登录
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            logger.warn("未登录用户尝试获取管理员商品列表");
+            return ResponseVo.error(401, "请先登录");
+        }
+        
+        // 检查用户权限，只有管理员能查看所有商品
+        if (!"ROLE_ADMIN".equals(currentUser.getRole())) {
+            logger.warn("普通用户尝试获取管理员商品列表: username={}", currentUser.getUsername());
+            return ResponseVo.error(4003, "没有权限进行此操作");
+        }
+        
+        // 验证状态参数
+        if (status != null && (status < 1 || status > 3)) {
+            logger.warn("无效的状态参数: {}", status);
+            return ResponseVo.error(4002, "参数错误，状态值无效。有效值为：1-在售，2-下架，3-删除");
+        }
+        
+        // 验证分类是否存在
+        if (categoryId != null && !"all".equals(categoryId)) {
+            try {
+                Integer cateId = Integer.parseInt(categoryId);
+                MallCategory category = categoryService.getCategoryById(cateId);
+                if (category == null) {
+                    logger.warn("分类不存在: categoryId={}", categoryId);
+                    return ResponseVo.error(4001, "参数错误，分类不存在");
+                }
+            } catch (NumberFormatException e) {
+                logger.warn("无效的分类ID: {}", categoryId);
+                return ResponseVo.error(4001, "参数错误，分类不存在");
+            }
+        }
+        
+        // 验证排序方式
+        if (orderBy != null && !orderBy.isEmpty()) {
+            if (!orderBy.equals("price_asc") && !orderBy.equals("price_desc") && !orderBy.equals("sales_desc")) {
+                logger.warn("无效的排序方式: {}", orderBy);
+                return ResponseVo.error(4002, "参数错误，排序方式无效");
+            }
+        }
+        
+        try {
+            PageResult<ProductListDto> result = productService.getAdminProductList(categoryId, keyword, status, pageNum, pageSize, orderBy);
+            return ResponseVo.success(result);
+        } catch (Exception e) {
+            logger.error("获取管理员商品列表异常: {}", e.getMessage(), e);
+            return ResponseVo.error(999, "服务器错误，请稍后重试");
+        }
+    }
+    
+    /**
      * 获取商品详情
      * @param productId 商品ID
      * @return 商品详情

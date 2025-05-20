@@ -38,7 +38,10 @@
             <if test="status != null">
                 AND status = #{status}
             </if>
-            AND status != 3 <!-- 不查询已删除商品 -->
+            <!-- 仅在管理员接口中使用status=3来显示已删除商品，否则默认不显示 -->
+            <if test="status == null">
+                AND status != 3 <!-- 不显示已删除商品 -->
+            </if>
         </where>
         <if test="orderBy != null">
             <choose>

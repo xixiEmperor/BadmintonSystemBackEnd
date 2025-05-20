@@ -77,8 +77,54 @@ public class MallProductServiceImpl implements MallProductService {
             params.put("orderBy", orderBy);
         }
         
-        // 设置只查询在售商品
+        // 设置只查询在售商品 (状态1为在售)
         params.put("status", 1);
+        
+        // 分页查询
+        PageHelper.startPage(pageNum, pageSize);
+        List<MallProduct> products = productMapper.findList(params);
+        PageInfo<MallProduct> pageInfo = new PageInfo<>(products);
+        
+        // 转换为DTO
+        List<ProductListDto> productDtos = products.stream().map(product -> {
+            ProductListDto dto = new ProductListDto();
+            BeanUtils.copyProperties(product, dto);
+            return dto;
+        }).collect(Collectors.toList());
+        
+        return PageResult.build(pageNum, pageSize, pageInfo.getTotal(), productDtos);
+    }
+
+    @Override
+    public PageResult<ProductListDto> getAdminProductList(String categoryId, String keyword, Integer status, Integer pageNum, Integer pageSize, String orderBy) {
+        logger.info("管理员获取商品列表: categoryId={}, keyword={}, status={}, pageNum={}, pageSize={}, orderBy={}", 
+                categoryId, keyword, status, pageNum, pageSize, orderBy);
+        
+        pageNum = (pageNum == null || pageNum < 1) ? 1 : pageNum;
+        pageSize = (pageSize == null || pageSize < 1) ? 10 : pageSize;
+        
+        // 构建查询参数
+        Map<String, Object> params = new HashMap<>();
+        if (categoryId != null && !"all".equals(categoryId)) {
+            try {
+                Integer cateId = Integer.parseInt(categoryId);
+                params.put("categoryId", cateId);
+            } catch (NumberFormatException e) {
+                logger.warn("无效的分类ID: {}", categoryId);
+                params.put("categoryId", -1); // 使用一个不存在的ID确保查不到数据
+            }
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            params.put("keyword", keyword.trim());
+        }
+        if (orderBy != null) {
+            params.put("orderBy", orderBy);
+        }
+        
+        // 只有在传入状态参数时才加入状态过滤条件
+        if (status != null) {
+            params.put("status", status);
+        }
         
         // 分页查询
         PageHelper.startPage(pageNum, pageSize);
@@ -105,7 +151,7 @@ public class MallProductServiceImpl implements MallProductService {
             return null;
         }
         
-        // 检查商品是否已下架或删除
+        // 检查商品是否已下架或删除 (状态1为在售)
         if (product.getStatus() != 1) {
             logger.warn("商品已下架或删除: productId={}, status={}", productId, product.getStatus());
             return null;
@@ -164,6 +210,11 @@ public class MallProductServiceImpl implements MallProductService {
         // 设置初始销量
         product.setSales(0);
         
+        // 如果没有指定状态，默认设置为下架状态(2)
+        if (product.getStatus() == null) {
+            product.setStatus(2);
+        }
+        
         // 插入商品
         int rows = productMapper.insert(product);
         if (rows > 0) {
@@ -200,6 +251,7 @@ public class MallProductServiceImpl implements MallProductService {
                             spec.setStock(stock);
                             
                             spec.setSales(0);
+                            // 默认规格状态为在售(1)
                             spec.setStatus(1);
                             
                             specificationMapper.insert(spec);
@@ -316,12 +368,19 @@ public class MallProductServiceImpl implements MallProductService {
             return false;
         }
         
-        // 已经是上架状态
+        // 已经是上架状态(1)
         if (product.getStatus() == 1) {
             logger.info("商品已经是上架状态: productId={}", productId);
             return true;
         }
         
+        // 如果是删除状态(3)，不允许直接上架
+        if (product.getStatus() == 3) {
+            logger.warn("被删除的商品不能上架: productId={}", productId);
+            return false;
+        }
+        
+        // 更新为上架状态(1)
         int rows = productMapper.updateStatus(productId, 1);
         return rows > 0;
     }
@@ -337,12 +396,19 @@ public class MallProductServiceImpl implements MallProductService {
             return false;
         }
         
-        // 已经是下架状态
+        // 已经是下架状态(2)
         if (product.getStatus() == 2) {
             logger.info("商品已经是下架状态: productId={}", productId);
             return true;
         }
         
+        // 如果是删除状态(3)，不允许下架
+        if (product.getStatus() == 3) {
+            logger.warn("被删除的商品不能下架: productId={}", productId);
+            return false;
+        }
+        
+        // 更新为下架状态(2)
         int rows = productMapper.updateStatus(productId, 2);
         return rows > 0;
     }
@@ -358,12 +424,13 @@ public class MallProductServiceImpl implements MallProductService {
             return false;
         }
         
-        // 已经是删除状态
+        // 已经是删除状态(3)
         if (product.getStatus() == 3) {
             logger.info("商品已经是删除状态: productId={}", productId);
             return true;
         }
         
+        // 更新为删除状态(3)
         int rows = productMapper.updateStatus(productId, 3);
         return rows > 0;
     }
