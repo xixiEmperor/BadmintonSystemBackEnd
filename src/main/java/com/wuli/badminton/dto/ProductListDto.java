@@ -18,4 +18,5 @@ public class ProductListDto {
     private Integer stock;       // 库存
     private Integer sales;       // 销量
     private Integer status;      // 状态
+    private Integer hasSpecification; // 是否有规格 0-无规格 1-有规格
 } 

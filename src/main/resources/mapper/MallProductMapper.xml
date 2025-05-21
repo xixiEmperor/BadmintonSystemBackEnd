@@ -74,7 +74,7 @@
     <insert id="insert" parameterType="com.wuli.badminton.pojo.MallProduct" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO mall_product (
             category_id, category_name, name, subtitle, main_image, sub_images, 
-            detail, price, stock, sales, status, create_time, update_time
+            detail, price, stock, sales, status, has_specification, create_time, update_time
         ) 
         VALUES (
             #{categoryId,jdbcType=INTEGER}, #{categoryName,jdbcType=VARCHAR}, 
@@ -82,7 +82,7 @@
             #{mainImage,jdbcType=VARCHAR}, #{subImages,jdbcType=VARCHAR}, 
             #{detail,jdbcType=LONGVARCHAR}, #{price,jdbcType=DECIMAL}, 
             #{stock,jdbcType=INTEGER}, #{sales,jdbcType=INTEGER}, 
-            #{status,jdbcType=INTEGER}, NOW(), NOW()
+            #{status,jdbcType=INTEGER}, #{hasSpecification,jdbcType=INTEGER}, NOW(), NOW()
         )
     </insert>
 
@@ -121,6 +121,9 @@
             </if>
             <if test="status != null">
                 status = #{status,jdbcType=INTEGER},
+            </if>
+            <if test="hasSpecification != null">
+                has_specification = #{hasSpecification,jdbcType=INTEGER},
             </if>
             update_time = NOW()
         </set>

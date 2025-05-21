@@ -77,7 +77,7 @@ public class MallProductServiceImpl implements MallProductService {
             params.put("orderBy", orderBy);
         }
         
-        // 设置只查询在售商品 (状态1为在售)
+        // 设置只查询在售商品
         params.put("status", 1);
         
         // 分页查询
@@ -89,6 +89,8 @@ public class MallProductServiceImpl implements MallProductService {
         List<ProductListDto> productDtos = products.stream().map(product -> {
             ProductListDto dto = new ProductListDto();
             BeanUtils.copyProperties(product, dto);
+            // 确保hasSpecification字段被正确设置
+            dto.setHasSpecification(product.getHasSpecification());
             return dto;
         }).collect(Collectors.toList());
         
@@ -135,6 +137,8 @@ public class MallProductServiceImpl implements MallProductService {
         List<ProductListDto> productDtos = products.stream().map(product -> {
             ProductListDto dto = new ProductListDto();
             BeanUtils.copyProperties(product, dto);
+            // 确保hasSpecification字段被正确设置
+            dto.setHasSpecification(product.getHasSpecification());
             return dto;
         }).collect(Collectors.toList());
         
@@ -151,7 +155,7 @@ public class MallProductServiceImpl implements MallProductService {
             return null;
         }
         
-        // 检查商品是否已下架或删除 (状态1为在售)
+        // 检查商品是否已下架或删除
         if (product.getStatus() != 1) {
             logger.warn("商品已下架或删除: productId={}, status={}", productId, product.getStatus());
             return null;
@@ -210,11 +214,6 @@ public class MallProductServiceImpl implements MallProductService {
         // 设置初始销量
         product.setSales(0);
         
-        // 如果没有指定状态，默认设置为下架状态(2)
-        if (product.getStatus() == null) {
-            product.setStatus(2);
-        }
-        
         // 插入商品
         int rows = productMapper.insert(product);
         if (rows > 0) {
@@ -251,7 +250,6 @@ public class MallProductServiceImpl implements MallProductService {
                             spec.setStock(stock);
                             
                             spec.setSales(0);
-                            // 默认规格状态为在售(1)
                             spec.setStatus(1);
                             
                             specificationMapper.insert(spec);
@@ -368,19 +366,12 @@ public class MallProductServiceImpl implements MallProductService {
             return false;
         }
         
-        // 已经是上架状态(1)
+        // 已经是上架状态
         if (product.getStatus() == 1) {
             logger.info("商品已经是上架状态: productId={}", productId);
             return true;
         }
         
-        // 如果是删除状态(3)，不允许直接上架
-        if (product.getStatus() == 3) {
-            logger.warn("被删除的商品不能上架: productId={}", productId);
-            return false;
-        }
-        
-        // 更新为上架状态(1)
         int rows = productMapper.updateStatus(productId, 1);
         return rows > 0;
     }
@@ -477,7 +468,7 @@ public class MallProductServiceImpl implements MallProductService {
     @Override
     @Transactional
     public Integer addProductSpecification(Integer productId, ProductSpecification specification) {
-        logger.info("添加商品规格: productId={}", productId);
+        logger.info("添加商品规格: productId={}, specification={}", productId, specification);
         
         // 检查商品是否存在
         MallProduct product = productMapper.findById(productId);
@@ -506,6 +497,46 @@ public class MallProductServiceImpl implements MallProductService {
             if (product.getHasSpecification() == null || product.getHasSpecification() != 1) {
                 product.setHasSpecification(1);
                 productMapper.update(product);
+            }
+            
+            // 从规格信息中提取规格选项，并保存到规格选项表
+            // 例如规格为 {"color": "红色", "size": "S"}，需要确保对应的规格选项存在
+            if (specification.getSpecifications() != null && !specification.getSpecifications().isEmpty()) {
+                for (Map.Entry<String, String> entry : specification.getSpecifications().entrySet()) {
+                    String specKey = entry.getKey(); // 例如 "color"
+                    String specValue = entry.getValue(); // 例如 "红色"
+                    
+                    // 查找此商品是否已有这个规格类型的选项
+                    SpecificationOption existingOption = specificationOptionMapper.findByProductIdAndSpecKey(
+                            productId, specKey);
+                    
+                    if (existingOption == null) {
+                        // 如果不存在，创建新的规格选项
+                        SpecificationOption option = new SpecificationOption();
+                        option.setProductId(productId);
+                        option.setSpecKey(specKey);
+                        
+                        // 创建规格值列表，例如 ["红色", "蓝色"]
+                        List<String> specValues = new ArrayList<>();
+                        specValues.add(specValue);
+                        option.setSpecValues(specValues);
+                        
+                        // 插入规格选项
+                        specificationOptionMapper.insert(option);
+                        logger.info("创建新的规格选项: productId={}, specKey={}, specValues={}", 
+                                productId, specKey, specValues);
+                    } else {
+                        // 如果已存在，检查值是否已包含，如果不包含则添加
+                        List<String> existingValues = existingOption.getSpecValues();
+                        if (!existingValues.contains(specValue)) {
+                            existingValues.add(specValue);
+                            // 更新规格选项
+                            specificationOptionMapper.update(existingOption);
+                            logger.info("更新规格选项: productId={}, specKey={}, specValues={}", 
+                                    productId, specKey, existingValues);
+                        }
+                    }
+                }
             }
             
             logger.info("商品规格添加成功: id={}", specification.getId());
