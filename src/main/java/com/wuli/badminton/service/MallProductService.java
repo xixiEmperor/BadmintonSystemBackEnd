@@ -1,5 +1,6 @@
 package com.wuli.badminton.service;
 
+import com.wuli.badminton.dao.MallProductMapper;
 import com.wuli.badminton.dto.PageResult;
 import com.wuli.badminton.dto.ProductAddDto;
 import com.wuli.badminton.dto.ProductDetailDto;
@@ -12,6 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 public interface MallProductService {
+    
+    /**
+     * 获取商品Mapper对象 便于购物车使用
+     * @return 商品Mapper对象
+     */
+    MallProductMapper getProductMapper();
     
     /**
      * 获取商品列表

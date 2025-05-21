@@ -677,4 +677,12 @@ public class MallProductServiceImpl implements MallProductService {
             productMapper.updateStock(productId, totalStock);
         }
     }
+    
+    /**
+     * 获取商品Mapper
+     * @return 商品Mapper
+     */
+    public MallProductMapper getProductMapper() {
+        return productMapper;
+    }
 } 
