@@ -540,6 +540,8 @@ public class MallProductServiceImpl implements MallProductService {
             }
             
             logger.info("商品规格添加成功: id={}", specification.getId());
+            // 更新商品总库存
+            updateProductTotalStock(productId);
             return specification.getId();
         } else {
             logger.error("商品规格添加失败");
@@ -564,7 +566,12 @@ public class MallProductServiceImpl implements MallProductService {
         
         // 更新规格
         int rows = specificationMapper.update(specification);
-        return rows > 0;
+        if (rows > 0) {
+            // 更新商品总库存
+            updateProductTotalStock(existingSpec.getProductId());
+            return true;
+        }
+        return false;
     }
     
     @Override
@@ -590,7 +597,13 @@ public class MallProductServiceImpl implements MallProductService {
                 if (product != null && product.getHasSpecification() != null && product.getHasSpecification() == 1) {
                     product.setHasSpecification(0);
                     productMapper.update(product);
+                    
+                    // 如果没有规格了，将库存设置为0
+                    productMapper.updateStock(product.getId(), 0);
                 }
+            } else {
+                // 如果还有其他规格，更新商品总库存
+                updateProductTotalStock(specification.getProductId());
             }
             
             return true;
@@ -624,6 +637,44 @@ public class MallProductServiceImpl implements MallProductService {
         
         // 更新库存
         int rows = specificationMapper.updateStock(specificationId, stock);
-        return rows > 0;
+        if (rows > 0) {
+            // 更新商品总库存
+            updateProductTotalStock(specification.getProductId());
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * 更新商品总库存 - 对于有规格的商品，总库存为所有规格库存之和
+     * @param productId 商品ID
+     */
+    private void updateProductTotalStock(Integer productId) {
+        logger.info("更新商品总库存: productId={}", productId);
+        
+        // 检查商品是否存在
+        MallProduct product = productMapper.findById(productId);
+        if (product == null) {
+            logger.warn("商品不存在: productId={}", productId);
+            return;
+        }
+        
+        // 如果商品有规格，计算总库存
+        if (product.getHasSpecification() != null && product.getHasSpecification() == 1) {
+            List<ProductSpecification> specifications = specificationMapper.findByProductId(productId);
+            
+            // 计算总库存为所有规格库存的总和
+            int totalStock = 0;
+            for (ProductSpecification spec : specifications) {
+                if (spec.getStock() != null && spec.getStatus() != null && spec.getStatus() == 1) {
+                    totalStock += spec.getStock();
+                }
+            }
+            
+            // 更新商品总库存
+            logger.info("更新商品总库存: productId={}, 原库存={}, 新库存={}", 
+                    productId, product.getStock(), totalStock);
+            productMapper.updateStock(productId, totalStock);
+        }
     }
 } 
