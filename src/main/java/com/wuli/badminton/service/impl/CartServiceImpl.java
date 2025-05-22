@@ -213,6 +213,7 @@ public class CartServiceImpl implements CartService {
         cartItem.setProductName(product.getName());
         cartItem.setProductImage(product.getMainImage());
         cartItem.setProductPrice(product.getPrice());
+        cartItem.setPriceAdjustment(BigDecimal.ZERO); // 默认设置价格调整为0
         cartItem.setQuantity(quantity);
         cartItem.setSelected(true);
         
@@ -232,6 +233,9 @@ public class CartServiceImpl implements CartService {
             cartItem.setSpecs(specs);
             cartItem.setStock(specification.getStock());
             cartItem.setSpecificationId(specification.getId());
+            
+            // 设置规格价格调整值
+            cartItem.setPriceAdjustment(specification.getPriceAdjustment());
             
             // 计算实际价格
             BigDecimal actualPrice = product.getPrice().add(specification.getPriceAdjustment());
@@ -285,6 +289,7 @@ public class CartServiceImpl implements CartService {
             // 更新规格相关信息
             cartItem.setStock(specification.getStock());
             cartItem.setSpecificationId(specification.getId());
+            cartItem.setPriceAdjustment(specification.getPriceAdjustment());
             
             // 计算实际价格
             BigDecimal actualPrice = product.getPrice().add(specification.getPriceAdjustment());
@@ -293,6 +298,7 @@ public class CartServiceImpl implements CartService {
             // 没有规格的商品
             cartItem.setStock(product.getStock());
             cartItem.setSpecificationId(null);
+            cartItem.setPriceAdjustment(BigDecimal.ZERO);
             cartItem.setTotalPrice(product.getPrice().multiply(new BigDecimal(cartItem.getQuantity())));
         }
     }
@@ -390,10 +396,18 @@ public class CartServiceImpl implements CartService {
                     // 有规格的商品 - 需要重新获取规格信息来获取价格调整值
                     ProductSpecification specification = mallProductService.getProductSpecification(
                             existingItem.getProductId(), existingItem.getSpecs());
-                    BigDecimal actualPrice = existingItem.getProductPrice().add(specification.getPriceAdjustment());
-                    existingItem.setTotalPrice(actualPrice.multiply(new BigDecimal(newQuantity)));
+                    if (specification != null) {
+                        existingItem.setPriceAdjustment(specification.getPriceAdjustment());
+                        BigDecimal actualPrice = existingItem.getProductPrice().add(specification.getPriceAdjustment());
+                        existingItem.setTotalPrice(actualPrice.multiply(new BigDecimal(newQuantity)));
+                    } else {
+                        // 如果规格不存在，使用现有的价格调整值
+                        BigDecimal actualPrice = existingItem.getProductPrice().add(existingItem.getPriceAdjustment());
+                        existingItem.setTotalPrice(actualPrice.multiply(new BigDecimal(newQuantity)));
+                    }
                 } else {
                     // 无规格的商品
+                    existingItem.setPriceAdjustment(BigDecimal.ZERO);
                     existingItem.setTotalPrice(existingItem.getProductPrice().multiply(new BigDecimal(newQuantity)));
                 }
                 
@@ -461,9 +475,7 @@ public class CartServiceImpl implements CartService {
         // 更新总价
         if (cartItem.getSpecificationId() != null) {
             // 有规格的商品
-            ProductSpecification specification = mallProductService.getProductSpecification(
-                    cartItem.getProductId(), cartItem.getSpecs());
-            BigDecimal actualPrice = cartItem.getProductPrice().add(specification.getPriceAdjustment());
+            BigDecimal actualPrice = cartItem.getProductPrice().add(cartItem.getPriceAdjustment());
             cartItem.setTotalPrice(actualPrice.multiply(new BigDecimal(quantity)));
         } else {
             // 无规格的商品

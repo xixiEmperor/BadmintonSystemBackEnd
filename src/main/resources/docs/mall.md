@@ -1872,6 +1872,7 @@ Authorization: Bearer {token}
                 "productName": "LINING N9II",
                 "productImage": "http://example.com/images/2.jpg",
                 "productPrice": 750.00,
+                "priceAdjustment": 0.00,
                 "specs": {},
                 "quantity": 2,
                 "selected": true,
@@ -1884,6 +1885,7 @@ Authorization: Bearer {token}
                 "productName": "YONEX羽毛球鞋SHB-65Z2",
                 "productImage": "images/shoes1.jpg",
                 "productPrice": 799.00,
+                "priceAdjustment": 30.00,
                 "specs": {
                     "color": "蓝色",
                     "size": "40"
@@ -1901,6 +1903,8 @@ Authorization: Bearer {token}
     }
 }
 ```
+
+> 注意：`productPrice`表示商品的基础价格，`priceAdjustment`表示因规格选择产生的价格调整值，`totalPrice`等于`(productPrice + priceAdjustment) * quantity`。无规格商品的`priceAdjustment`为0。
 
 #### 2. 添加商品到购物车
 
