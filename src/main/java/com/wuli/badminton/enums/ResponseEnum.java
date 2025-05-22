@@ -108,7 +108,42 @@ public enum ResponseEnum {
     /**
      * 头像更新成功
      */
-    AVATAR_UPDATE_SUCCESS(0, "头像更新成功");
+    AVATAR_UPDATE_SUCCESS(0, "头像更新成功"),
+    
+    /**
+     * 订单不存在
+     */
+    ORDER_NOT_EXIST(10010, "订单不存在"),
+    
+    /**
+     * 支付创建失败
+     */
+    PAY_CREATE_ERROR(10020, "支付创建失败"),
+    
+    /**
+     * 支付状态查询失败
+     */
+    PAY_QUERY_ERROR(10021, "支付状态查询失败"),
+    
+    /**
+     * 支付异步通知处理失败
+     */
+    PAY_NOTIFY_ERROR(10022, "支付通知处理失败"),
+    
+    /**
+     * 订单已支付
+     */
+    ORDER_PAID(10030, "订单已支付"),
+    
+    /**
+     * 订单已取消
+     */
+    ORDER_CANCELED(10031, "订单已取消"),
+    
+    /**
+     * 订单创建失败
+     */
+    ORDER_CREATE_ERROR(10040, "订单创建失败");
     
     /**
      * 状态码

@@ -50,7 +50,11 @@ public class MallProductServiceImpl implements MallProductService {
     
     @Autowired
     private SpecificationOptionMapper specificationOptionMapper;
-
+    
+    @Override
+    public ProductSpecificationMapper getProductSpecificationMapper() {
+        return specificationMapper;
+    }
     @Override
     public PageResult<ProductListDto> getProductList(String categoryId, String keyword, Integer pageNum, Integer pageSize, String orderBy) {
         logger.info("获取商品列表: categoryId={}, keyword={}, pageNum={}, pageSize={}, orderBy={}", 
@@ -684,5 +688,11 @@ public class MallProductServiceImpl implements MallProductService {
      */
     public MallProductMapper getProductMapper() {
         return productMapper;
+    }
+    
+    @Override
+    public MallProduct getProductById(Integer productId) {
+        logger.info("根据ID获取商品: productId={}", productId);
+        return productMapper.findById(productId);
     }
 } 

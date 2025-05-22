@@ -5,9 +5,11 @@ import com.wuli.badminton.dto.PageResult;
 import com.wuli.badminton.dto.ProductAddDto;
 import com.wuli.badminton.dto.ProductDetailDto;
 import com.wuli.badminton.dto.ProductListDto;
+import com.wuli.badminton.pojo.MallProduct;
 import com.wuli.badminton.pojo.ProductSpecification;
 import com.wuli.badminton.pojo.SpecificationOption;
 import org.springframework.web.multipart.MultipartFile;
+import com.wuli.badminton.dao.ProductSpecificationMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,15 @@ public interface MallProductService {
      * @return 商品Mapper对象
      */
     MallProductMapper getProductMapper();
+
+    ProductSpecificationMapper getProductSpecificationMapper();
+
+    /**
+     * 根据ID获取商品
+     * @param productId 商品ID
+     * @return 商品对象，不存在返回null
+     */
+    MallProduct getProductById(Integer productId);
     
     /**
      * 获取商品列表

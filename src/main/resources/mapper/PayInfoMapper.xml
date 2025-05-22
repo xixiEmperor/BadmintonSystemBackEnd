@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.wuli.badminton.dao.PayInfoMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.PayInfo">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="order_no" property="orderNo" jdbcType="BIGINT"/>
+        <result column="pay_platform" property="payPlatform" jdbcType="INTEGER"/>
+        <result column="platform_number" property="platformNumber" jdbcType="VARCHAR"/>
+        <result column="platform_status" property="platformStatus" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="pay_amount" property="payAmount" jdbcType="DECIMAL"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, order_no, pay_platform, platform_number, platform_status, business_type,
+        pay_amount, status, create_time, update_time
+    </sql>
+    
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.PayInfo" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pay_info (
+            order_no, pay_platform, platform_number, platform_status, business_type,
+            pay_amount, status, create_time, update_time
+        )
+        VALUES (
+            #{orderNo}, #{payPlatform}, #{platformNumber}, #{platformStatus}, #{businessType},
+            #{payAmount}, #{status}, #{createTime}, #{updateTime}
+        )
+    </insert>
+    
+    <select id="selectByOrderNo" parameterType="long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pay_info
+        WHERE order_no = #{orderNo}
+    </select>
+    
+    <select id="selectByPlatformNumber" parameterType="string" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pay_info
+        WHERE platform_number = #{platformNumber}
+    </select>
+    
+    <update id="updateByOrderNo" parameterType="com.wuli.badminton.pojo.PayInfo">
+        UPDATE pay_info
+        SET status = #{status},
+            platform_status = #{platformStatus},
+            platform_number = #{platformNumber},
+            update_time = #{updateTime}
+        WHERE order_no = #{orderNo}
+    </update>
+    
+    <update id="updateStatusByOrderNo">
+        UPDATE pay_info
+        SET status = #{status},
+            platform_number = #{platformNumber},
+            platform_status = #{platformStatus},
+            update_time = now()
+        WHERE order_no = #{orderNo}
+    </update>
+</mapper> 

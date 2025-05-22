@@ -51,7 +51,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/static/**",
                 "/api/auth/login",
                 "/api/auth/register",
-                    "/uploads/avatars/**"
+                    "/uploads/avatars/**",
+                    "/pay/notify/**"
             ).permitAll()
             .anyRequest().authenticated()
             .and()

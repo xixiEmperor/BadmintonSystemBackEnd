@@ -2,7 +2,9 @@ package com.wuli.badminton.service;
 
 import com.wuli.badminton.dto.CartDto;
 import com.wuli.badminton.dto.CartItemForm;
+import com.wuli.badminton.pojo.CartItem;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -61,4 +63,18 @@ public interface CartService {
      * @return 是否清空成功
      */
     boolean clearCart();
+    
+    /**
+     * 获取用户选中的购物车商品列表
+     * @param userId 用户ID
+     * @return 选中的购物车商品列表
+     */
+    List<CartItem> listSelectedItems(Long userId);
+    
+    /**
+     * 删除用户选中的购物车商品
+     * @param userId 用户ID
+     * @return 是否删除成功
+     */
+    boolean deleteSelectedItems(Long userId);
 }

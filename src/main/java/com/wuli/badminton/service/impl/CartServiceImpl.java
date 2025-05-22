@@ -38,7 +38,7 @@ public class CartServiceImpl implements CartService {
     private static final int CART_EXPIRE_DAYS = 30;
     
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String, String> redisTemplate;
     
     @Autowired
     private UserService userService;
@@ -93,41 +93,6 @@ public class CartServiceImpl implements CartService {
     }
     
     /**
-     * 从field名称中提取商品ID
-     * @param field field名称
-     * @return 商品ID
-     */
-    private Integer extractProductId(String field) {
-        String[] parts = field.split(":", 2);
-        try {
-            return Integer.parseInt(parts[0]);
-        } catch (NumberFormatException e) {
-            logger.error("从field中提取商品ID失败: field={}", field, e);
-            return null;
-        }
-    }
-    
-    /**
-     * 从field名称中提取规格信息
-     * @param field field名称
-     * @return 规格信息
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, String> extractSpecs(String field) {
-        String[] parts = field.split(":", 2);
-        if (parts.length < 2) {
-            return new HashMap<>();
-        }
-        
-        try {
-            return objectMapper.readValue(parts[1], Map.class);
-        } catch (Exception e) {
-            logger.error("从field中提取规格信息失败: field={}", field, e);
-            return new HashMap<>();
-        }
-    }
-    
-    /**
      * 将JSON字符串转为CartItem对象
      * @param json JSON字符串
      * @return CartItem对象
@@ -153,36 +118,6 @@ public class CartServiceImpl implements CartService {
             logger.error("序列化购物车项失败: cartItem={}", cartItem, e);
             throw new RuntimeException("序列化购物车项失败", e);
         }
-    }
-    
-    /**
-     * 根据商品ID和规格获取有效的商品规格
-     * @param productId 商品ID
-     * @param specs 规格信息
-     * @return 商品规格
-     */
-    private ProductSpecification getValidProductSpecification(Integer productId, Map<String, String> specs) {
-        // 获取商品
-        MallProduct product = mallProductService.getProductMapper().findById(productId);
-        if (product == null || !product.getStatus().equals(1)) {
-            logger.warn("商品不存在或已下架: productId={}", productId);
-            return null;
-        }
-        
-        // 检查商品是否有规格
-        if (product.getHasSpecification() == null || product.getHasSpecification() != 1) {
-            logger.warn("商品没有规格: productId={}", productId);
-            return null;
-        }
-        
-        // 获取商品规格
-        ProductSpecification specification = mallProductService.getProductSpecification(productId, specs);
-        if (specification == null || specification.getStatus() == null || specification.getStatus() != 1) {
-            logger.warn("商品规格不存在或已禁用: productId={}, specs={}", productId, specs);
-            return null;
-        }
-        
-        return specification;
     }
     
     /**
@@ -582,14 +517,69 @@ public class CartServiceImpl implements CartService {
     
     @Override
     public boolean clearCart() {
-        Long userId = getCurrentUserId();
-        String cartKey = getCartKey(userId);
-        
-        logger.info("清空购物车: userId={}", userId);
-        
-        // 删除购物车
-        redisTemplate.delete(cartKey);
-        
-        return true;
+        try {
+            Long userId = getCurrentUserId();
+            String cartKey = getCartKey(userId);
+            redisTemplate.delete(cartKey);
+            logger.info("清空购物车成功: userId={}", userId);
+            return true;
+        } catch (Exception e) {
+            logger.error("清空购物车失败", e);
+            return false;
+        }
+    }
+    
+    /**
+     * 获取用户选中的购物车商品列表
+     */
+    @Override
+    public List<CartItem> listSelectedItems(Long userId) {
+        try {
+            String cartKey = getCartKey(userId);
+            HashOperations<String, String, String> hashOps = redisTemplate.opsForHash();
+            Map<String, String> cartMap = hashOps.entries(cartKey);
+            
+            // 将购物车项转为对象列表并过滤出选中的项
+            return cartMap.values().stream()
+                .map(this::deserializeCartItem)
+                .filter(item -> item != null && item.getSelected())
+                .peek(this::updateCartItemLatestInfo) // 更新最新商品信息
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("获取选中的购物车商品失败: userId={}", userId, e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 删除用户选中的购物车商品
+     */
+    @Override
+    public boolean deleteSelectedItems(Long userId) {
+        try {
+            String cartKey = getCartKey(userId);
+            HashOperations<String, String, String> hashOps = redisTemplate.opsForHash();
+            Map<String, String> cartMap = hashOps.entries(cartKey);
+            
+            // 找出选中的购物车项的key
+            List<String> selectedKeys = cartMap.entrySet().stream()
+                .filter(entry -> {
+                    CartItem item = deserializeCartItem(entry.getValue());
+                    return item != null && item.getSelected();
+                })
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+            
+            // 如果有选中的项，则删除
+            if (!selectedKeys.isEmpty()) {
+                hashOps.delete(cartKey, selectedKeys.toArray());
+                logger.info("删除选中的购物车商品成功: userId={}, count={}", userId, selectedKeys.size());
+            }
+            
+            return true;
+        } catch (Exception e) {
+            logger.error("删除选中的购物车商品失败: userId={}", userId, e);
+            return false;
+        }
     }
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.wuli.badminton.dao.MallOrderItemMapper">
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.MallOrderItem">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="order_no" jdbcType="BIGINT" property="orderNo"/>
+        <result column="product_id" jdbcType="INTEGER" property="productId"/>
+        <result column="product_name" jdbcType="VARCHAR" property="productName"/>
+        <result column="product_image" jdbcType="VARCHAR" property="productImage"/>
+        <result column="current_unit_price" jdbcType="DECIMAL" property="currentUnitPrice"/>
+        <result column="quantity" jdbcType="INTEGER" property="quantity"/>
+        <result column="total_price" jdbcType="DECIMAL" property="totalPrice"/>
+        <result column="specification_id" jdbcType="INTEGER" property="specificationId"/>
+        <result column="specs" jdbcType="VARCHAR" property="specs"/>
+        <result column="price_adjustment" jdbcType="DECIMAL" property="priceAdjustment"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, order_no, product_id, product_name, product_image, current_unit_price, quantity, 
+        total_price, specification_id, specs, price_adjustment, create_time, update_time
+    </sql>
+    
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO mall_order_item (
+            order_no, product_id, product_name, product_image, current_unit_price, quantity,
+            total_price, specification_id, specs, price_adjustment, create_time, update_time
+        )
+        VALUES
+        <foreach collection="orderItems" item="item" separator=",">
+            (
+                #{item.orderNo}, #{item.productId}, #{item.productName}, #{item.productImage}, 
+                #{item.currentUnitPrice}, #{item.quantity}, #{item.totalPrice}, 
+                #{item.specificationId}, #{item.specs}, #{item.priceAdjustment},
+                #{item.createTime}, #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+    
+    <select id="selectByOrderNo" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mall_order_item
+        WHERE order_no = #{orderNo}
+    </select>
+    
+    <delete id="deleteByOrderNo" parameterType="java.lang.Long">
+        DELETE FROM mall_order_item
+        WHERE order_no = #{orderNo}
+    </delete>
+</mapper> 

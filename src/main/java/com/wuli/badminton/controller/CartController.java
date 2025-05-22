@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -90,6 +89,7 @@ public class CartController {
             @RequestBody Map<String, Object> body) {
         
         Integer quantity = (Integer) body.get("quantity");
+        @SuppressWarnings("unchecked")
         Map<String, String> specs = (Map<String, String>) body.get("specs");
         
         logger.info("更新购物车商品数量: productId={}, quantity={}, specs={}", 
@@ -173,6 +173,7 @@ public class CartController {
             @RequestBody Map<String, Object> body) {
         
         Boolean selected = (Boolean) body.get("selected");
+        @SuppressWarnings("unchecked")
         Map<String, String> specs = (Map<String, String>) body.get("specs");
         
         logger.info("选择/取消选择购物车商品: productId={}, selected={}, specs={}", 
