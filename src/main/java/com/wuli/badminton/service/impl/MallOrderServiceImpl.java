@@ -398,11 +398,10 @@ public class MallOrderServiceImpl implements MallOrderService {
             OrderVo.OrderItemVo itemVo = new OrderVo.OrderItemVo();
             BeanUtils.copyProperties(item, itemVo);
             
-            // 转换specs格式：从字符串转换为Map
+            // 转换specs格式：支持多种格式解析
             if (item.getSpecs() != null && !item.getSpecs().isEmpty()) {
                 try {
-                    TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>() {};
-                    Map<String, String> specsMap = objectMapper.readValue(item.getSpecs(), typeRef);
+                    Map<String, String> specsMap = parseSpecs(item.getSpecs());
                     itemVo.setSpecs(specsMap);
                 } catch (Exception e) {
                     logger.warn("【订单详情】specs格式转换失败: orderNo={}, specs={}, error={}", 
@@ -420,6 +419,59 @@ public class MallOrderServiceImpl implements MallOrderService {
         orderVo.setOrderItemList(orderItemVoList);
         
         return orderVo;
+    }
+    
+    /**
+     * 解析specs字符串为Map
+     * 支持JSON格式和Java Map toString格式
+     */
+    private Map<String, String> parseSpecs(String specs) {
+        if (specs == null || specs.trim().isEmpty()) {
+            return new HashMap<>();
+        }
+        
+        specs = specs.trim();
+        
+        // 尝试JSON格式解析
+        if (specs.startsWith("{\"") && specs.endsWith("\"}")) {
+            try {
+                TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>() {};
+                return objectMapper.readValue(specs, typeRef);
+            } catch (Exception e) {
+                logger.debug("【specs解析】JSON格式解析失败，尝试其他格式: specs={}", specs);
+            }
+        }
+        
+        // 尝试Java Map toString格式解析 {key=value, key2=value2}
+        if (specs.startsWith("{") && specs.endsWith("}")) {
+            try {
+                Map<String, String> result = new HashMap<>();
+                // 去掉首尾的大括号
+                String content = specs.substring(1, specs.length() - 1).trim();
+                
+                if (!content.isEmpty()) {
+                    // 按逗号分割键值对
+                    String[] pairs = content.split(",");
+                    for (String pair : pairs) {
+                        String[] keyValue = pair.trim().split("=", 2);
+                        if (keyValue.length == 2) {
+                            String key = keyValue[0].trim();
+                            String value = keyValue[1].trim();
+                            result.put(key, value);
+                        }
+                    }
+                }
+                
+                logger.debug("【specs解析】Java Map格式解析成功: specs={}, result={}", specs, result);
+                return result;
+            } catch (Exception e) {
+                logger.warn("【specs解析】Java Map格式解析失败: specs={}, error={}", specs, e.getMessage());
+            }
+        }
+        
+        // 如果都解析失败，返回空Map
+        logger.warn("【specs解析】无法识别的格式: specs={}", specs);
+        return new HashMap<>();
     }
 
     /**
