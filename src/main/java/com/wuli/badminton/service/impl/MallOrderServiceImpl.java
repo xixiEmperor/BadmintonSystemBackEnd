@@ -64,7 +64,7 @@ public class MallOrderServiceImpl implements MallOrderService {
         // 1. 获取购物车中选中的商品
         List<CartItem> cartItems = cartService.listSelectedItems(userId);
         if (CollectionUtils.isEmpty(cartItems)) {
-            log.error("【创建订单】购物车为空, userId={}", userId);
+            logger.error("【创建订单】购物车为空, userId={}", userId);
             return null;
         }
         
@@ -82,7 +82,7 @@ public class MallOrderServiceImpl implements MallOrderService {
             // 4.1 查询商品（实际使用中应该用mapper批量查询，这里简化处理）
             MallProduct product = productService.getProductById(cartItem.getProductId());
             if (product == null) {
-                log.error("【创建订单】商品不存在, productId={}", cartItem.getProductId());
+                logger.error("【创建订单】商品不存在, productId={}", cartItem.getProductId());
                 throw new RuntimeException("商品不存在");
             }
             
@@ -146,13 +146,13 @@ public class MallOrderServiceImpl implements MallOrderService {
         // 1. 查询商品信息
         MallProduct product = productService.getProductById(productId);
         if (product == null) {
-            log.error("【立即购买】商品不存在, productId={}", productId);
+            logger.error("【立即购买】商品不存在, productId={}", productId);
             throw new RuntimeException("商品不存在");
         }
         
         // 2. 检查商品状态
         if (product.getStatus() != 1) {
-            log.error("【立即购买】商品已下架, productId={}", productId);
+            logger.error("【立即购买】商品已下架, productId={}", productId);
             throw new RuntimeException("商品已下架");
         }
         
@@ -165,7 +165,7 @@ public class MallOrderServiceImpl implements MallOrderService {
             // 有规格的商品，查询规格信息
             ProductSpecification specification = productService.getProductSpecification(productId, specs);
             if (specification == null) {
-                log.error("【立即购买】商品规格不存在, productId={}, specs={}", productId, specs);
+                logger.error("【立即购买】商品规格不存在, productId={}, specs={}", productId, specs);
                 throw new RuntimeException("商品规格不存在");
             }
             
@@ -176,7 +176,7 @@ public class MallOrderServiceImpl implements MallOrderService {
         
         // 4. 检查库存
         if (availableStock < quantity) {
-            log.error("【立即购买】库存不足, productId={}, 需要数量={}, 可用库存={}", 
+            logger.error("【立即购买】库存不足, productId={}, 需要数量={}, 可用库存={}", 
                      productId, quantity, availableStock);
             throw new RuntimeException("库存不足");
         }
@@ -225,7 +225,7 @@ public class MallOrderServiceImpl implements MallOrderService {
         // 10. 发送延迟消息，10分钟后自动取消订单
         sendOrderDelayMessage(orderNo);
         
-        log.info("【立即购买】订单创建成功, orderNo={}, productId={}, quantity={}", 
+        logger.info("【立即购买】订单创建成功, orderNo={}, productId={}, quantity={}", 
                  orderNo, productId, quantity);
         
         return orderNo;
@@ -236,14 +236,14 @@ public class MallOrderServiceImpl implements MallOrderService {
      */
     private void sendOrderDelayMessage(Long orderNo) {
         try {
-            log.info("【订单超时关单】发送延迟消息: orderNo={}", orderNo);
+            logger.info("【订单超时关单】发送延迟消息: orderNo={}", orderNo);
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.EXCHANGE_ORDER,
                     RabbitMQConfig.ROUTING_KEY_ORDER_DELAY,
                     orderNo.toString()
             );
         } catch (Exception e) {
-            log.error("【订单超时关单】发送延迟消息失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
+            logger.error("【订单超时关单】发送延迟消息失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
         }
     }
     
@@ -318,7 +318,7 @@ public class MallOrderServiceImpl implements MallOrderService {
     public void paySuccess(Long orderNo) {
         MallOrder order = mallOrderMapper.selectByOrderNo(orderNo);
         if (order == null) {
-            log.error("【支付成功回调】订单不存在, orderNo={}", orderNo);
+            logger.error("【支付成功回调】订单不存在, orderNo={}", orderNo);
             return;
         }
         
@@ -401,12 +401,12 @@ public class MallOrderServiceImpl implements MallOrderService {
     @Override
     @Transactional
     public void reduceProductStock(Long orderNo) {
-        log.info("【扣减库存】开始处理: orderNo={}", orderNo);
+        logger.info("【扣减库存】开始处理: orderNo={}", orderNo);
         
         // 查询订单项
         List<MallOrderItem> orderItems = mallOrderItemMapper.selectByOrderNo(orderNo);
         if (CollectionUtils.isEmpty(orderItems)) {
-            log.warn("【扣减库存】订单项为空: orderNo={}", orderNo);
+            logger.warn("【扣减库存】订单项为空: orderNo={}", orderNo);
             return;
         }
         
@@ -418,7 +418,7 @@ public class MallOrderServiceImpl implements MallOrderService {
             try {
                 if (specificationId != null) {
                     // 有规格商品，扣减规格库存
-                    log.info("【扣减库存】扣减规格库存: productId={}, specificationId={}, quantity={}", 
+                    logger.info("【扣减库存】扣减规格库存: productId={}, specificationId={}, quantity={}", 
                              productId, specificationId, quantity);
                     
                     // 获取当前规格库存
@@ -433,15 +433,15 @@ public class MallOrderServiceImpl implements MallOrderService {
                         productService.updateSpecificationStock(specificationId, newStock);
                         
                         // updateSpecificationStock方法内部会自动更新商品总库存，无需额外处理
-                        log.info("【扣减库存】规格库存扣减成功: specificationId={}, 原库存={}, 新库存={}", 
+                        logger.info("【扣减库存】规格库存扣减成功: specificationId={}, 原库存={}, 新库存={}", 
                                  specificationId, specification.getStock(), newStock);
                     } else {
-                        log.error("【扣减库存】商品规格不存在: productId={}, specificationId={}", 
+                        logger.error("【扣减库存】商品规格不存在: productId={}, specificationId={}", 
                                   productId, specificationId);
                     }
                 } else {
                     // 无规格商品，直接扣减商品库存
-                    log.info("【扣减库存】扣减商品库存: productId={}, quantity={}", productId, quantity);
+                    logger.info("【扣减库存】扣减商品库存: productId={}, quantity={}", productId, quantity);
                     
                     // 获取当前商品库存
                     MallProduct product = productService.getProductById(productId);
@@ -453,20 +453,20 @@ public class MallOrderServiceImpl implements MallOrderService {
                         // 更新商品库存
                         productService.updateStock(productId, newStock);
                         
-                        log.info("【扣减库存】商品库存扣减成功: productId={}, 原库存={}, 新库存={}", 
+                        logger.info("【扣减库存】商品库存扣减成功: productId={}, 原库存={}, 新库存={}", 
                                  productId, product.getStock(), newStock);
                     } else {
-                        log.error("【扣减库存】商品不存在: productId={}", productId);
+                        logger.error("【扣减库存】商品不存在: productId={}", productId);
                     }
                 }
             } catch (Exception e) {
-                log.error("【扣减库存】扣减失败: productId={}, specificationId={}, error={}", 
+                logger.error("【扣减库存】扣减失败: productId={}, specificationId={}, error={}", 
                           productId, specificationId, e.getMessage(), e);
                 // 可以选择继续处理其他商品库存，或者抛出异常终止事务
                 // throw new RuntimeException("扣减库存失败", e);
             }
         }
         
-        log.info("【扣减库存】处理完成: orderNo={}", orderNo);
+        logger.info("【扣减库存】处理完成: orderNo={}", orderNo);
     }
 } 
