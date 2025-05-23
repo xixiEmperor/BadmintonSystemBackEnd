@@ -1,9 +1,10 @@
 package com.wuli.badminton.dao;
 
-import com.wuli.badminton.pojo.MallOrder;
-import com.wuli.badminton.pojo.MallOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.wuli.badminton.pojo.MallOrder;
+
 import java.util.Date;
 import java.util.List;
 
@@ -40,6 +41,14 @@ public interface MallOrderMapper {
      * @return 订单列表
      */
     List<MallOrder> selectByUserId(Long userId);
+    
+    /**
+     * 查询用户的订单列表（带状态筛选）
+     * @param userId 用户ID
+     * @param status 订单状态，null表示查询所有状态
+     * @return 订单列表
+     */
+    List<MallOrder> selectByUserIdAndStatus(@Param("userId") Long userId, @Param("status") Integer status);
     
     /**
      * 更新订单状态

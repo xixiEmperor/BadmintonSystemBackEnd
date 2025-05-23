@@ -6,6 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 订单视图对象
@@ -43,10 +44,6 @@ public class OrderVo {
      */
     private Integer status;
     
-    /**
-     * 状态描述
-     */
-    private String statusDesc;
     
     /**
      * 支付时间
@@ -124,7 +121,7 @@ public class OrderVo {
         /**
          * 规格值，如颜色、尺寸等
          */
-        private String specs;
+        private Map<String, String> specs;
         
         /**
          * 价格调整

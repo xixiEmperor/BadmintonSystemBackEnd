@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * 商城订单服务实现类
  */
@@ -53,6 +55,9 @@ public class MallOrderServiceImpl implements MallOrderService {
     
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
     /**
      * 创建订单
      */
@@ -267,10 +272,17 @@ public class MallOrderServiceImpl implements MallOrderService {
      * 获取订单列表
      */
     @Override
-    public PageInfo<OrderVo> getOrderList(Integer pageNum, Integer pageSize) {
+    public PageInfo<OrderVo> getOrderList(Integer pageNum, Integer pageSize, Integer status) {
         Long userId = userService.getCurrentUser().getId();
         PageHelper.startPage(pageNum, pageSize);
-        List<MallOrder> orders = mallOrderMapper.selectByUserId(userId);
+        
+        // 根据是否有状态筛选使用不同的查询方法
+        List<MallOrder> orders;
+        if (status != null) {
+            orders = mallOrderMapper.selectByUserIdAndStatus(userId, status);
+        } else {
+            orders = mallOrderMapper.selectByUserId(userId);
+        }
         
         List<OrderVo> orderVoList = new ArrayList<>();
         for (MallOrder order : orders) {
@@ -385,11 +397,27 @@ public class MallOrderServiceImpl implements MallOrderService {
         List<OrderVo.OrderItemVo> orderItemVoList = orderItems.stream().map(item -> {
             OrderVo.OrderItemVo itemVo = new OrderVo.OrderItemVo();
             BeanUtils.copyProperties(item, itemVo);
+            
+            // 转换specs格式：从字符串转换为Map
+            if (item.getSpecs() != null && !item.getSpecs().isEmpty()) {
+                try {
+                    TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>() {};
+                    Map<String, String> specsMap = objectMapper.readValue(item.getSpecs(), typeRef);
+                    itemVo.setSpecs(specsMap);
+                } catch (Exception e) {
+                    logger.warn("【订单详情】specs格式转换失败: orderNo={}, specs={}, error={}", 
+                             order.getOrderNo(), item.getSpecs(), e.getMessage());
+                    // 如果转换失败，设置为空Map
+                    itemVo.setSpecs(new HashMap<>());
+                }
+            } else {
+                itemVo.setSpecs(new HashMap<>());
+            }
+            
             return itemVo;
         }).collect(Collectors.toList());
         
         orderVo.setOrderItemList(orderItemVoList);
-        orderVo.setStatusDesc(order.getStatusDesc());
         
         return orderVo;
     }

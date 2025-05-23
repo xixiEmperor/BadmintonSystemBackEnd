@@ -31,10 +31,11 @@ public interface MallOrderService {
     /**
      * 获取订单列表
      * @param pageNum 页码
-     * @param pageSize 每页数量
+     * @param pageSize 每页大小
+     * @param status 订单状态，null表示查询所有状态
      * @return 订单列表
      */
-    PageInfo<OrderVo> getOrderList(Integer pageNum, Integer pageSize);
+    PageInfo<OrderVo> getOrderList(Integer pageNum, Integer pageSize, Integer status);
     
     /**
      * 取消订单
@@ -74,5 +75,5 @@ public interface MallOrderService {
      * 支付成功后扣减库存
      * @param orderNo 订单号
      */
-    public void reduceProductStock(Long orderNo);
+    void reduceProductStock(Long orderNo);
 } 

@@ -40,13 +40,15 @@ public class MallOrderController {
      * 获取订单列表
      * @param pageNum 页码
      * @param pageSize 每页数量
+     * @param status 订单状态：10-未付款，20-已付款，30-已取消，40-已完成，50-已关闭，null-全部状态
      * @return 订单列表
      */
     @GetMapping
     public ResponseVo<PageInfo<OrderVo>> getOrderList(
             @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
-            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
-        PageInfo<OrderVo> orderList = mallOrderService.getOrderList(pageNum, pageSize);
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+            @RequestParam(value = "status", required = false) Integer status) {
+        PageInfo<OrderVo> orderList = mallOrderService.getOrderList(pageNum, pageSize, status);
         return ResponseVo.success(orderList);
     }
     

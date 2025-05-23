@@ -49,6 +49,16 @@
         ORDER BY create_time DESC
     </select>
     
+    <select id="selectByUserIdAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mall_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+    
     <update id="updateStatusByOrderNo">
         UPDATE mall_order
         SET status = #{status},
