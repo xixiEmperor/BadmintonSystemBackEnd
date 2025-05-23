@@ -13,6 +13,15 @@ public interface MallOrderService {
     Long createOrder();
     
     /**
+     * 立即购买 - 基于购物车中的特定商品创建订单
+     * @param productId 商品ID
+     * @param quantity 购买数量
+     * @param specs 商品规格（可为空）
+     * @return 订单号
+     */
+    Long createOrderByProduct(Integer productId, Integer quantity, java.util.Map<String, String> specs);
+    
+    /**
      * 获取订单详情
      * @param orderNo 订单号
      * @return 订单详情

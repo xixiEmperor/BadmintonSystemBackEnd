@@ -2,6 +2,7 @@ package com.wuli.badminton.service.impl;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.wuli.badminton.config.RabbitMQConfig;
 import com.wuli.badminton.dao.MallOrderItemMapper;
 import com.wuli.badminton.dao.MallOrderMapper;
 import com.wuli.badminton.pojo.CartItem;
@@ -14,6 +15,7 @@ import com.wuli.badminton.service.MallOrderService;
 import com.wuli.badminton.service.MallProductService;
 import com.wuli.badminton.vo.OrderVo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,13 +25,16 @@ import com.wuli.badminton.service.UserService;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * 商城订单服务实现类
  */
 @Service
 @Slf4j
 public class MallOrderServiceImpl implements MallOrderService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ForumServiceImpl.class);
     
     @Autowired
     private MallOrderMapper mallOrderMapper;
@@ -46,6 +51,8 @@ public class MallOrderServiceImpl implements MallOrderService {
     @Autowired
     private UserService userService;
     
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
     /**
      * 创建订单
      */
@@ -53,7 +60,7 @@ public class MallOrderServiceImpl implements MallOrderService {
     @Transactional
     public Long createOrder() {
         // 获取当前用户ID
-    Long userId = userService.getCurrentUser().getId();
+        Long userId = userService.getCurrentUser().getId();
         // 1. 获取购物车中选中的商品
         List<CartItem> cartItems = cartService.listSelectedItems(userId);
         if (CollectionUtils.isEmpty(cartItems)) {
@@ -121,7 +128,123 @@ public class MallOrderServiceImpl implements MallOrderService {
         // 7. 清空购物车中已下单的商品
         cartService.deleteSelectedItems(userId);
         
+        // 8. 发送延迟消息，10分钟后自动取消订单
+        sendOrderDelayMessage(orderNo);
+        
         return orderNo;
+    }
+    
+    /**
+     * 立即购买 - 基于特定商品创建订单
+     */
+    @Override
+    @Transactional
+    public Long createOrderByProduct(Integer productId, Integer quantity, Map<String, String> specs) {
+        // 获取当前用户ID
+        Long userId = userService.getCurrentUser().getId();
+        
+        // 1. 查询商品信息
+        MallProduct product = productService.getProductById(productId);
+        if (product == null) {
+            log.error("【立即购买】商品不存在, productId={}", productId);
+            throw new RuntimeException("商品不存在");
+        }
+        
+        // 2. 检查商品状态
+        if (product.getStatus() != 1) {
+            log.error("【立即购买】商品已下架, productId={}", productId);
+            throw new RuntimeException("商品已下架");
+        }
+        
+        // 3. 处理规格信息
+        Integer specificationId = null;
+        BigDecimal priceAdjustment = BigDecimal.ZERO;
+        int availableStock = product.getStock();
+        
+        if (specs != null && !specs.isEmpty()) {
+            // 有规格的商品，查询规格信息
+            ProductSpecification specification = productService.getProductSpecification(productId, specs);
+            if (specification == null) {
+                log.error("【立即购买】商品规格不存在, productId={}, specs={}", productId, specs);
+                throw new RuntimeException("商品规格不存在");
+            }
+            
+            specificationId = specification.getId();
+            priceAdjustment = specification.getPriceAdjustment();
+            availableStock = specification.getStock();
+        }
+        
+        // 4. 检查库存
+        if (availableStock < quantity) {
+            log.error("【立即购买】库存不足, productId={}, 需要数量={}, 可用库存={}", 
+                     productId, quantity, availableStock);
+            throw new RuntimeException("库存不足");
+        }
+        
+        // 5. 生成订单号
+        Long orderNo = generateOrderNo();
+        Date now = new Date();
+        
+        // 6. 计算商品总价
+        BigDecimal itemTotalPrice = product.getPrice()
+                .add(priceAdjustment)
+                .multiply(new BigDecimal(quantity));
+        
+        // 7. 创建订单项
+        MallOrderItem orderItem = new MallOrderItem();
+        orderItem.setOrderNo(orderNo);
+        orderItem.setProductId(product.getId());
+        orderItem.setProductName(product.getName());
+        orderItem.setProductImage(product.getMainImage());
+        orderItem.setCurrentUnitPrice(product.getPrice());
+        orderItem.setQuantity(quantity);
+        orderItem.setTotalPrice(itemTotalPrice);
+        orderItem.setSpecificationId(specificationId);
+        orderItem.setSpecs(specs != null && !specs.isEmpty() ? specs.toString() : null);
+        orderItem.setPriceAdjustment(priceAdjustment);
+        orderItem.setCreateTime(now);
+        orderItem.setUpdateTime(now);
+        
+        // 8. 插入订单项（使用批量插入）
+        List<MallOrderItem> orderItems = new ArrayList<>();
+        orderItems.add(orderItem);
+        mallOrderItemMapper.batchInsert(orderItems);
+        
+        // 9. 创建订单
+        MallOrder order = new MallOrder();
+        order.setOrderNo(orderNo);
+        order.setUserId(userId);
+        order.setTotalPrice(itemTotalPrice);
+        order.setPaymentType(MallOrder.PAYMENT_TYPE_ONLINE);
+        order.setStatus(MallOrder.STATUS_UNPAID);
+        order.setCreateTime(now);
+        order.setUpdateTime(now);
+        
+        mallOrderMapper.insert(order);
+        
+        // 10. 发送延迟消息，10分钟后自动取消订单
+        sendOrderDelayMessage(orderNo);
+        
+        log.info("【立即购买】订单创建成功, orderNo={}, productId={}, quantity={}", 
+                 orderNo, productId, quantity);
+        
+        return orderNo;
+    }
+    
+    /**
+     * 发送订单延迟消息，用于超时自动取消
+     */
+    private void sendOrderDelayMessage(Long orderNo) {
+        try {
+            log.info("【订单超时关单】发送延迟消息: orderNo={}", orderNo);
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_ORDER,
+                    RabbitMQConfig.ROUTING_KEY_ORDER_DELAY,
+                    orderNo.toString()
+            );
+        } catch (Exception e) {
+            log.error("【订单超时关单】发送延迟消息失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
+        }
     }
     
     /**

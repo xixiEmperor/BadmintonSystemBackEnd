@@ -3,11 +3,14 @@ package com.wuli.badminton.controller;
 import com.github.pagehelper.PageInfo;
 import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.service.MallOrderService;
+import com.wuli.badminton.vo.BuyNowRequestDto;
 import com.wuli.badminton.vo.OrderVo;
 import com.wuli.badminton.vo.ResponseVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
 
 /**
  * 商城订单控制器
@@ -88,5 +91,28 @@ public class MallOrderController {
             return ResponseVo.error(ResponseEnum.ORDER_NOT_EXIST);
         }
         return ResponseVo.success(status);
+    }
+    
+    /**
+     * 立即购买 - 基于特定商品创建订单
+     */
+    @PostMapping("/buy-now")
+    public ResponseVo<Long> buyNow(@RequestBody @Valid BuyNowRequestDto request) {
+        try {
+            Long orderNo = mallOrderService.createOrderByProduct(
+                    request.getProductId(), 
+                    request.getQuantity(), 
+                    request.getSpecs()
+            );
+            
+            if (orderNo != null) {
+                return ResponseVo.success(orderNo);
+            } else {
+                return ResponseVo.error(ResponseEnum.ORDER_CREATE_ERROR);
+            }
+        } catch (Exception e) {
+            log.error("【立即购买】创建订单失败", e);
+            return ResponseVo.error(ResponseEnum.ORDER_CREATE_ERROR.getCode(), e.getMessage());
+        }
     }
 } 
