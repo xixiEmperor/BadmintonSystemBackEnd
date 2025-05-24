@@ -61,10 +61,11 @@ public class MallOrder {
     private Date updateTime;
     
     // 订单状态常量
-    public static final int STATUS_CANCELED = 0;     // 已取消
     public static final int STATUS_UNPAID = 10;      // 未付款
     public static final int STATUS_PAID = 20;        // 已付款
-    public static final int STATUS_COMPLETED = 30;   // 已完成
+    public static final int STATUS_CANCELED = 30;    // 已取消
+    public static final int STATUS_COMPLETED = 40;   // 已完成
+    public static final int STATUS_CLOSED = 50;      // 已关闭
     
     // 支付类型常量
     public static final int PAYMENT_TYPE_ONLINE = 1; // 在线支付
@@ -74,14 +75,16 @@ public class MallOrder {
      */
     public String getStatusDesc() {
         switch (status) {
-            case STATUS_CANCELED:
-                return "已取消";
             case STATUS_UNPAID:
                 return "待付款";
             case STATUS_PAID:
                 return "已付款";
+            case STATUS_CANCELED:
+                return "已取消";
             case STATUS_COMPLETED:
                 return "已完成";
+            case STATUS_CLOSED:
+                return "已关闭";
             default:
                 return "未知状态";
         }

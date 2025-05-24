@@ -18,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -242,11 +244,17 @@ public class MallOrderServiceImpl implements MallOrderService {
     private void sendOrderDelayMessage(Long orderNo) {
         try {
             logger.info("【订单超时关单】发送延迟消息: orderNo={}", orderNo);
+            
+            // 直接发送订单号字符串，避免复杂的序列化问题
+            String message = orderNo.toString();
+            
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.EXCHANGE_ORDER,
                     RabbitMQConfig.ROUTING_KEY_ORDER_DELAY,
-                    orderNo.toString()
+                    message
             );
+            
+            logger.info("【订单超时关单】延迟消息发送成功: orderNo={}, message={}", orderNo, message);
         } catch (Exception e) {
             logger.error("【订单超时关单】发送延迟消息失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
         }
@@ -304,22 +312,45 @@ public class MallOrderServiceImpl implements MallOrderService {
     @Override
     @Transactional
     public boolean cancelOrder(Long orderNo) {
-        Long userId = userService.getCurrentUser().getId();
+        // 检查是否有当前用户上下文
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isSystemCall = authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getPrincipal());
+        
         MallOrder order = mallOrderMapper.selectByOrderNo(orderNo);
-        if (order == null || !order.getUserId().equals(userId)) {
+        if (order == null) {
+            logger.warn("【取消订单】订单不存在: orderNo={}", orderNo);
             return false;
+        }
+        
+        // 如果不是系统调用，需要验证用户权限
+        if (!isSystemCall) {
+            Long userId = userService.getCurrentUser().getId();
+            if (!order.getUserId().equals(userId)) {
+                logger.warn("【取消订单】用户无权限取消此订单: orderNo={}, userId={}", orderNo, userId);
+                return false;
+            }
         }
         
         // 只有未付款的订单才能取消
         if (!Objects.equals(order.getStatus(), MallOrder.STATUS_UNPAID)) {
+            logger.info("【取消订单】订单状态不允许取消: orderNo={}, status={}", orderNo, order.getStatus());
             return false;
         }
         
         order.setStatus(MallOrder.STATUS_CANCELED);
         order.setUpdateTime(new Date());
         
-        return mallOrderMapper.updateStatusByOrderNo(order.getOrderNo(), 
+        boolean success = mallOrderMapper.updateStatusByOrderNo(order.getOrderNo(), 
                 order.getStatus(), order.getUpdateTime()) > 0;
+        
+        if (success) {
+            logger.info("【取消订单】订单取消成功: orderNo={}, isSystemCall={}", orderNo, isSystemCall);
+        } else {
+            logger.error("【取消订单】订单取消失败: orderNo={}", orderNo);
+        }
+        
+        return success;
     }
     
     /**
@@ -337,6 +368,8 @@ public class MallOrderServiceImpl implements MallOrderService {
         // 更新订单状态为已支付
         if (Objects.equals(order.getStatus(), MallOrder.STATUS_UNPAID)) {
             Date now = new Date();
+            // 更新订单状态为已支付
+            mallOrderMapper.updateStatusByOrderNo(orderNo, MallOrder.STATUS_PAID, now);
             mallOrderMapper.updatePaymentInfo(orderNo, now, now);
             
             // 生成取货码
@@ -345,6 +378,8 @@ public class MallOrderServiceImpl implements MallOrderService {
             
             // 扣减库存
             reduceProductStock(orderNo);
+            
+            logger.info("【支付成功回调】订单状态更新成功: orderNo={}, status={}", orderNo, MallOrder.STATUS_PAID);
         }
     }
     
