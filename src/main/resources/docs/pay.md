@@ -1,18 +1,5 @@
 ## 1. 订单列表查看功能
 
-**是的，可以查看订单列表**，通过以下接口：
-
-```java
-// MallOrderController.java
-@GetMapping
-public ResponseVo<PageInfo<OrderVo>> getOrderList(
-        @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
-        @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
-    PageInfo<OrderVo> orderList = mallOrderService.getOrderList(pageNum, pageSize);
-    return ResponseVo.success(orderList);
-}
-```
-
 **功能特点：**
 - 支持分页查询（默认第1页，每页10条）
 - 只显示当前用户的订单
@@ -32,17 +19,21 @@ public ResponseVo<PageInfo<OrderVo>> getOrderList(
 
 #### **1. 订单状态管理**
 ```java
-// 订单创建时状态为"未支付"
-order.setStatus(MallOrder.STATUS_UNPAID);
-
+public class MallOrderServiceImpl implements MallOrderService {
+    // 示例方法
+    public void createOrder() {
+        // 订单创建时状态为"未支付"
+        order.setStatus(MallOrder.STATUS_UNPAID);
 // 10分钟内都可以支付
 // 延迟队列会在10分钟后检查状态
-if (order.getStatus().equals(MallOrder.STATUS_UNPAID)) {
-    // 仍未支付，执行取消
-    mallOrderService.cancelOrder(orderNo);
-} else {
-    // 已支付，跳过取消
-    logger.info("订单无需取消，当前状态={}", order.getStatus());
+        if (order.getStatus().equals(MallOrder.STATUS_UNPAID)) {
+            // 仍未支付，执行取消
+            mallOrderService.cancelOrder(orderNo);
+        } else {
+            // 已支付，跳过取消
+            logger.info("订单无需取消，当前状态={}", order.getStatus());
+        }
+    }
 }
 ```
 
@@ -81,31 +72,6 @@ public ResponseVo<PayInfo> queryPayStatus(@RequestParam("orderNo") Long orderNo)
 ```
 
 ### **技术实现：**
-
-#### **前端实现：**
-```javascript
-// 1. 查看订单列表
-GET /orders?pageNum=1&pageSize=10
-
-// 2. 对于未支付订单，显示"去支付"按钮
-if (order.status === 10) { // STATUS_UNPAID
-    showPayButton(order.orderNo, order.totalPrice);
-}
-
-// 3. 点击支付按钮
-function payOrder(orderNo, amount) {
-    // 调用支付接口
-    POST /pay/create
-    {
-        "orderNo": orderNo,
-        "amount": amount,
-        "businessType": "MALL"
-    }
-    
-    // 获取支付链接并跳转
-    window.open(response.data.codeUrl);
-}
-```
 
 #### **后端支持：**
 ```java
