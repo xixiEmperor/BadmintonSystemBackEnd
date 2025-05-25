@@ -7,8 +7,8 @@
   库存预占：考虑在下单时预占库存，支付成功后扣减预占的库存，超时未支付则释放预占库存。
   事务补偿：如果库存扣减失败，应有补偿机制确保数据一致性。
   日志完善：添加更详细的日志记录，便于问题追踪和分析。
-- [ ] 管理员后台管理订单 增加接口/admin/orders 可以查看所有用户订单列表 并根据用户名username字段通过id和order表关联/订单号进行搜索 
-- 管理员可以关闭订单（发生线下退款等行为）设置订单状态为50-已关闭 则不计入订单统计
+- [*] 管理员后台管理订单 增加接口/admin/orders 可以查看所有用户订单列表 并根据用户名username字段通过id和order表关联/订单号进行搜索 
+- 管理员可以关闭订单（发生线下退款等行为）设置订单状态为50-已关闭 
 - 管理员也可以根据提货码 验证提货码正确后修改订单状态为40-已完成
 - [ ] 随机码生成算法 唯一 不重复 hash分散
 
@@ -21,7 +21,7 @@
 在PayInfo 表中也记录businessType字段，消息队列监听器通过该字段PayNotifyListener39-45line来区分是哪个业务
 - [ ] 订单创建成功后 则场地该时段无法预约 一个场地一个时段只能预约一次 
 - 一个账号一次只能有一个预约中订单 若取消或者超时未支付 则恢复场地状态为可预约
-
+- [ ] 提示cursor时按照功能模块 逐步完成 同时按点描述 不要给流程图
 用户提交预约 → 检查时间段是否空闲  否 -> 显示错误提示（该时段不可用）
                      ↓ 是
      创建预约订单（状态：待支付）
@@ -38,13 +38,13 @@
                      ↓                   ↓
      用户到场联系前台确认使用           订单状态更新为“已取消”
                      ↓
-     支付完成后判断是否在“开场前10分钟”：
+     支付完成后判断是否在“开场前30分钟”：
                      ↓ 是                         ↓ 否
-     不允许退款，提示“距离开场不足10分钟”     可申请退款（需审核）
+     不允许支付后退款，提示“距离开场不足30分钟”     可申请退款（需审核）
                      ↓                           ↓
                                          用户申请退款 → 进入“退款中”状态
                                                              ↓
-                                           判断用户当日退款次数是否 ≤ 2 次
+                                           判断用户当日取消次数是否 ≤ 2 次
                                                              ↓ 是
                                        商家审核通过 → 场地状态恢复为“空闲中”
                                                              ↓
@@ -157,7 +157,7 @@ public class UserBehaviorListener {
 
 #### 3.2.1 订单表
 
-```sql
+```
 CREATE TABLE `mall_order` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '订单id',
   `order_no` bigint(20) NOT NULL COMMENT '订单号',
@@ -179,7 +179,7 @@ CREATE TABLE `mall_order` (
 
 #### 3.2.2 订单明细表
 
-```sql
+```
 CREATE TABLE `mall_order_item` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '订单子表id',
   `user_id` int(11) NOT NULL COMMENT '用户id',
@@ -246,18 +246,18 @@ CREATE TABLE `mall_order_item` (
 
 | 接口                        | 方法   | 说明             | 参数                      |
 |-----------------------------|--------|------------------|---------------------------|
-| `/orders`                   | POST   | 创建订单         | remark                    |
-| `/orders`                   | GET    | 获取订单列表     | status, pageNum, pageSize |
-| `/orders/{orderNo}`         | GET    | 获取订单详情     | 无                        |
-| `/orders/{orderNo}/cancel`  | PUT    | 取消订单         | 无                        |
-| `/orders/pickup/{code}`     | GET    | 验证提货码       | 无                        |
-| `/orders/{orderNo}/complete`| PUT    | 完成订单（提货后）| 无                       |
+| `/api/mall/orders`                   | POST   | 创建订单         | remark                    |
+| `/api/mall/orders`                   | GET    | 获取订单列表     | status, pageNum, pageSize |
+| `/api/mall/orders/{orderNo}`         | GET    | 获取订单详情     | 无                        |
+| `/api/mall/orders/{orderNo}/cancel`  | PUT    | 取消订单         | 无                        |
+| `/api/mall/orders/pickup/{code}`     | GET    | 验证提货码       | 无                        |
+| `/api/mall/orders/{orderNo}/complete`| PUT    | 完成订单（提货后）| 无                       |
 
 ### 3.4 实现细节
 
 #### 3.4.1 创建订单
 
-```java
+``java
 @Transactional
 public OrderDto create(Integer userId, String remark) {
     // 获取购物车
@@ -370,7 +370,7 @@ public OrderDto create(Integer userId, String remark) {
 
 #### 3.4.2 支付回调处理
 
-```java
+``java
 @Transactional
 public void handlePaymentCallback(PaymentCallbackDto callback) {
     // 查询订单
@@ -409,7 +409,7 @@ public void handlePaymentCallback(PaymentCallbackDto callback) {
 
 #### 3.4.3 提货码生成与验证
 
-```java
+``java
 /**
  * 生成提货码
  */
@@ -472,7 +472,7 @@ public OrderDto verifyPickupCode(String pickupCode) {
 
 ### 4.3 支付请求消息格式
 
-```json
+```
 {
   "orderNo": 12345678901,
   "userId": 1001,
@@ -486,7 +486,7 @@ public OrderDto verifyPickupCode(String pickupCode) {
 
 ### 4.4 支付回调消息格式
 
-```json
+```
 {
   "orderNo": 12345678901,
   "transactionId": "pay123456789",
@@ -502,7 +502,7 @@ public OrderDto verifyPickupCode(String pickupCode) {
 
 #### 1. 添加Maven依赖
 在您的项目pom.xml中添加对pay项目的依赖：
-```xml
+```
 <dependency>
     <groupId>com.wuli</groupId>
     <artifactId>pay</artifactId>
@@ -513,7 +513,7 @@ public OrderDto verifyPickupCode(String pickupCode) {
 
 #### 2. 配置RabbitMQ
 在application.yml中添加RabbitMQ配置：
-```yaml
+```
 spring:
   rabbitmq:
     addresses: 127.0.0.1
@@ -525,7 +525,7 @@ spring:
 
 #### 3. 创建支付
 使用IPayService接口发起支付：
-```java
+```
 @Autowired
 private IPayService payService;
 
@@ -539,7 +539,7 @@ public String createPayment(Long orderNo, BigDecimal amount) {
 
 #### 4. 查询支付状态
 使用IPayService接口查询支付状态：
-```java
+```
 @Autowired
 private IPayService payService;
 
@@ -551,7 +551,7 @@ public PayInfo checkPaymentStatus(String orderId) {
 
 #### 5. 处理支付回调
 创建监听器消费RabbitMQ消息：
-```java
+```
 @Component
 @RabbitListener(queues = "payNotify")
 @Slf4j
@@ -575,7 +575,7 @@ public class PayMessageListener {
 
 #### 6. 配置支付参数
 在application.yml中配置支付相关参数：
-```yaml
+```
 wx:
   appId: your_wx_app_id
   mchId: your_wx_mch_id
@@ -595,7 +595,7 @@ alipay:
 ### 4.6 实现细节
 
 1. **支付服务初始化**
-```java
+```
 @Component
 public class BestPayConfig {
 
@@ -624,7 +624,7 @@ public class BestPayConfig {
 
 
 2. **支付回调处理**
-```java
+```
 @RestController
 @Slf4j
 public class PayController {
@@ -677,7 +677,7 @@ public class PayController {
 
 #### 5.2.2 商品相似度表
 
-```sql
+```
 CREATE TABLE `mall_product_similarity` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `product_id_a` int(11) NOT NULL COMMENT '商品A',
@@ -694,7 +694,7 @@ CREATE TABLE `mall_product_similarity` (
 
 #### 5.2.3 用户推荐结果表
 
-```sql
+```
 CREATE TABLE `mall_user_recommend` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL COMMENT '用户ID',

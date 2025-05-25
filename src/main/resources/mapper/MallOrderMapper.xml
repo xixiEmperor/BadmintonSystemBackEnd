@@ -80,4 +80,23 @@
             update_time = #{updateTime}
         WHERE order_no = #{orderNo}
     </update>
+    
+    <!-- 管理员查询所有订单（支持搜索） -->
+    <select id="selectAllOrdersForAdmin" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM mall_order mo
+        <if test="username != null and username != ''">
+            LEFT JOIN user u ON mo.user_id = u.id
+        </if>
+        <where>
+            <if test="username != null and username != ''">
+                AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="orderNo != null">
+                AND mo.order_no = #{orderNo}
+            </if>
+        </where>
+        ORDER BY mo.create_time DESC
+    </select>
 </mapper> 

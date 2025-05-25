@@ -57,6 +57,16 @@ public class OrderVo {
     private String pickupCode;
     
     /**
+     * 用户名（管理员视图使用）
+     */
+    private String username;
+    
+    /**
+     * 用户邮箱（管理员视图使用）
+     */
+    private String userEmail;
+    
+    /**
      * 创建时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")

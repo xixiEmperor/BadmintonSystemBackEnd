@@ -76,4 +76,31 @@ public interface MallOrderService {
      * @param orderNo 订单号
      */
     void reduceProductStock(Long orderNo);
+    
+    // ==================== 管理员功能 ====================
+    
+    /**
+     * 管理员查看所有订单列表（支持搜索）
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param username 用户名搜索（可选）
+     * @param orderNo 订单号搜索（可选）
+     * @return 订单列表
+     */
+    PageInfo<OrderVo> getAdminOrderList(Integer pageNum, Integer pageSize, String username, Long orderNo);
+    
+    /**
+     * 管理员关闭订单
+     * @param orderNo 订单号
+     * @return 是否成功
+     */
+    boolean adminCloseOrder(Long orderNo);
+    
+    /**
+     * 管理员验证提货码并完成订单
+     * @param orderNo 订单号
+     * @param pickupCode 提货码
+     * @return 是否成功
+     */
+    boolean adminCompleteOrder(Long orderNo, String pickupCode);
 } 

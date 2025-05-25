@@ -2382,6 +2382,412 @@ Authorization: Bearer {token}
 }
 ```
 
+## 2. 支付接口
+
+### 2.1 创建支付订单
+
+**接口描述**：创建支付订单
+
+**请求URL**：`/payments`
+
+**请求方式**：`POST`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| orderNo | 是 | Long | 订单号 |
+| paymentType | 是 | Integer | 支付类型：1-在线支付 |
+
+**响应参数**：
+
+| 参数名 | 类型 | 说明 |
+| ------ | ------ | ------ |
+| code | Integer | 响应状态码，0表示成功 |
+| msg | String | 响应消息 |
+| data | Object | 支付信息 |
+| &emsp;paymentNo | Long | 支付单号 |
+| &emsp;orderNo | Long | 订单号 |
+| &emsp;totalPrice | BigDecimal | 支付金额 |
+| &emsp;paymentType | Integer | 支付类型：1-在线支付 |
+| &emsp;status | Integer | 支付状态：10-未支付，20-已支付 |
+| &emsp;statusDesc | String | 支付状态描述 |
+| &emsp;createTime | Date | 创建时间 |
+| &emsp;updateTime | Date | 更新时间 |
+
+**请求示例**：
+```
+{
+  "orderNo": 1694325687651,
+  "paymentType": 1
+}
+```
+
+**响应示例**：
+
+```
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "paymentNo": 1694325687651,
+    "orderNo": 1694325687651,
+    "totalPrice": 2329.00,
+    "paymentType": 1,
+    "status": 10,
+    "statusDesc": "未支付",
+    "createTime": "2023-09-10 15:28:07",
+    "updateTime": "2023-09-10 15:28:07"
+  }
+}
+```
+
+### 2.2 获取支付订单列表
+
+**接口描述**：获取当前用户的支付订单列表
+
+**请求URL**：`/payments`
+
+**请求方式**：`GET`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| pageNum | 否 | Integer | 页码，默认为1 |
+| pageSize | 否 | Integer | 每页数量，默认为10 |
+
+**响应参数**：
+
+| 参数名 | 类型 | 说明 |
+| ------ | ------ | ------ |
+| code | Integer | 响应状态码，0表示成功 |
+| msg | String | 响应消息 |
+| data | Object | 支付订单列表数据 |
+| &emsp;pageNum | Integer | 当前页码 |
+| &emsp;pageSize | Integer | 每页数量 |
+| &emsp;size | Integer | 当前页实际数量 |
+| &emsp;total | Long | 总数量 |
+| &emsp;list | Array | 支付订单列表 |
+| &emsp;&emsp;paymentNo | Long | 支付单号 |
+| &emsp;&emsp;orderNo | Long | 订单号 |
+| &emsp;&emsp;totalPrice | BigDecimal | 支付金额 |
+| &emsp;&emsp;paymentType | Integer | 支付类型：1-在线支付 |
+| &emsp;&emsp;status | Integer | 支付状态：10-未支付，20-已支付 |
+| &emsp;&emsp;statusDesc | String | 支付状态描述 |
+| &emsp;&emsp;createTime | Date | 创建时间 |
+| &emsp;&emsp;updateTime | Date | 更新时间 |
+
+**响应示例**：
+
+```
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "pageNum": 1,
+    "pageSize": 10,
+    "size": 1,
+    "total": 1,
+    "list": [
+      {
+        "paymentNo": 1694325687651,
+        "orderNo": 1694325687651,
+        "totalPrice": 2329.00,
+        "paymentType": 1,
+        "status": 10,
+        "statusDesc": "未支付",
+        "createTime": "2023-09-10 15:28:07",
+        "updateTime": "2023-09-10 15:28:07"
+      }
+    ]
+  }
+}
+```
+
+### 2.3 获取支付订单详情
+
+**接口描述**：根据支付单号获取支付订单详情
+
+**请求URL**：`/payments/{paymentNo}`
+
+**请求方式**：`GET`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| paymentNo | 是 | Long | 支付单号（路径参数） |
+
+**响应参数**：
+
+与获取支付订单列表接口中的单个支付订单对象相同
+
+**响应示例**：
+
+```
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "paymentNo": 1694325687651,
+    "orderNo": 1694325687651,
+    "totalPrice": 2329.00,
+    "paymentType": 1,
+    "status": 10,
+    "statusDesc": "未支付",
+    "createTime": "2023-09-10 15:28:07",
+    "updateTime": "2023-09-10 15:28:07"
+  }
+}
+```
+
+## 3. 订单接口
+
+### 3.1 创建订单
+
+**接口描述**：根据购物车中的商品创建订单
+
+**请求URL**：`/api/mall/orders`
+
+**请求方式**：`POST`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| remark | 否 | String | 订单备注 |
+
+**响应参数**：
+
+| 参数名 | 类型 | 说明 |
+| ------ | ------ | ------ |
+| status | Integer | 响应状态码，0表示成功 |
+| msg | String | 响应消息 |
+| data | Long | 订单号 |
+
+**请求示例**：
+``json
+{
+  "remark": "请尽快发货"
+}
+```
+
+**响应示例**：
+
+```
+{
+  "status": 0,
+  "msg": "success",
+  "data": 1694325687651
+}
+```
+
+### 3.2 获取订单列表
+
+**接口描述**：获取当前用户的订单列表
+
+**请求URL**：`/api/mall/orders`
+
+**请求方式**：`GET`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| status | 否 | Integer | 订单状态：10-未付款，20-已付款，30-已取消，40-已完成，50-已关闭 |
+| pageNum | 否 | Integer | 页码，默认为1 |
+| pageSize | 否 | Integer | 每页数量，默认为10 |
+
+**响应参数**：
+
+| 参数名 | 类型 | 说明 |
+| ------ | ------ | ------ |
+| status | Integer | 响应状态码，0表示成功 |
+| msg | String | 响应消息 |
+| data | Object | 分页订单数据 |
+| &emsp;pageNum | Integer | 当前页码 |
+| &emsp;pageSize | Integer | 每页数量 |
+| &emsp;size | Integer | 当前页实际数量 |
+| &emsp;total | Long | 总数量 |
+| &emsp;list | Array | 订单列表 |
+| &emsp;&emsp;orderNo | Long | 订单号 |
+| &emsp;&emsp;userId | Integer | 用户ID |
+| &emsp;&emsp;totalPrice | BigDecimal | 订单总价 |
+| &emsp;&emsp;paymentType | Integer | 支付类型：1-在线支付 |
+| &emsp;&emsp;status | Integer | 订单状态：10-未付款，20-已付款，30-已取消，40-已完成，50-已关闭 |
+| &emsp;&emsp;statusDesc | String | 状态描述 |
+| &emsp;&emsp;paymentTime | Date | 支付时间 |
+| &emsp;&emsp;pickupCode | String | 提货码 |
+| &emsp;&emsp;createTime | Date | 创建时间 |
+| &emsp;&emsp;updateTime | Date | 更新时间 |
+| &emsp;&emsp;orderItemList | Array | 订单明细列表 |
+| &emsp;&emsp;&emsp;id | Integer | 明细ID |
+| &emsp;&emsp;&emsp;orderNo | Long | 订单号 |
+| &emsp;&emsp;&emsp;productId | Integer | 商品ID |
+| &emsp;&emsp;&emsp;productName | String | 商品名称 |
+| &emsp;&emsp;&emsp;productImage | String | 商品图片 |
+| &emsp;&emsp;&emsp;currentUnitPrice | BigDecimal | 商品单价 |
+| &emsp;&emsp;&emsp;quantity | Integer | 商品数量 |
+| &emsp;&emsp;&emsp;totalPrice | BigDecimal | 商品总价 |
+| &emsp;&emsp;&emsp;priceAdjustment | BigDecimal | 价格调整 |
+| &emsp;&emsp;&emsp;specificationId | Integer | 规格ID |
+| &emsp;&emsp;&emsp;specs | String | 规格信息 |
+
+**响应示例**：
+
+```
+{
+  "status": 0,
+  "msg": "success",
+  "data": {
+    "pageNum": 1,
+    "pageSize": 10,
+    "size": 1,
+    "total": 1,
+    "list": [
+      {
+        "orderNo": 1694325687651,
+        "userId": 1,
+        "totalPrice": 2329.00,
+        "paymentType": 1,
+        "status": 10,
+        "statusDesc": "未支付",
+        "paymentTime": null,
+        "pickupCode": null,
+        "createTime": "2023-09-10 15:28:07",
+        "updateTime": "2023-09-10 15:28:07",
+        "orderItemList": [
+          {
+            "id": 1,
+            "orderNo": 1694325687651,
+            "productId": 2,
+            "productName": "LINING N9II",
+            "productImage": "http://example.com/images/2.jpg",
+            "currentUnitPrice": 750.00,
+            "quantity": 2,
+            "totalPrice": 1500.00,
+            "priceAdjustment": 0.00,
+            "specificationId": null,
+            "specs": null
+          },
+          {
+            "id": 2,
+            "orderNo": 1694325687651,
+            "productId": 100006,
+            "productName": "YONEX羽毛球鞋SHB-65Z2",
+            "productImage": "images/shoes1.jpg",
+            "currentUnitPrice": 799.00,
+            "quantity": 1,
+            "totalPrice": 829.00,
+            "priceAdjustment": 30.00,
+            "specificationId": 14,
+            "specs": "{color=蓝色, size=40}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 3.3 获取订单详情
+
+**接口描述**：根据订单号获取订单详情
+
+**请求URL**：`/api/mall/orders/{orderNo}`
+
+**请求方式**：`GET`
+
+**请求头**：
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**：
+
+| 参数名 | 必选 | 类型 | 说明 |
+| ------ | ------ | ------ | ------ |
+| orderNo | 是 | Long | 订单号（路径参数） |
+
+**响应参数**：
+
+与获取订单列表接口中的单个订单对象相同
+
+**响应示例**：
+
+```
+{
+  "status": 0,
+  "msg": "success",
+  "data": {
+    "orderNo": 1694325687651,
+    "userId": 1,
+    "totalPrice": 2329.00,
+    "paymentType": 1,
+    "status": 10,
+    "statusDesc": "未支付",
+    "paymentTime": null,
+    "pickupCode": null,
+    "createTime": "2023-09-10 15:28:07",
+    "updateTime": "2023-09-10 15:28:07",
+    "orderItemList": [
+      {
+        "id": 1,
+        "orderNo": 1694325687651,
+        "productId": 2,
+        "productName": "LINING N9II",
+        "productImage": "http://example.com/images/2.jpg",
+        "currentUnitPrice": 750.00,
+        "quantity": 2,
+        "totalPrice": 1500.00,
+        "priceAdjustment": 0.00,
+        "specificationId": null,
+        "specs": null
+      },
+      {
+        "id": 2,
+        "orderNo": 1694325687651,
+        "productId": 100006,
+        "productName": "YONEX羽毛球鞋SHB-65Z2",
+        "productImage": "images/shoes1.jpg",
+        "currentUnitPrice": 799.00,
+        "quantity": 1,
+        "totalPrice": 829.00,
+        "priceAdjustment": 30.00,
+        "specificationId": 14,
+        "specs": "{color=蓝色, size=40}"
+      }
+    ]
+  }
+}
+```
+
 ### 1.4 取消订单
 
 **接口描述**：取消未支付的订单

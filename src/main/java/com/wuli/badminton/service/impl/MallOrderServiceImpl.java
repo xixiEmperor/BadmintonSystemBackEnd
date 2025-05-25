@@ -584,4 +584,131 @@ public class MallOrderServiceImpl implements MallOrderService {
         
         logger.info("【扣减库存】处理完成: orderNo={}", orderNo);
     }
+    
+    // ==================== 管理员功能实现 ====================
+    
+    /**
+     * 管理员查看所有订单列表（支持搜索）
+     */
+    @Override
+    public PageInfo<OrderVo> getAdminOrderList(Integer pageNum, Integer pageSize, String username, Long orderNo) {
+        logger.info("【管理员查询订单】开始查询: pageNum={}, pageSize={}, username={}, orderNo={}", 
+                 pageNum, pageSize, username, orderNo);
+        
+        PageHelper.startPage(pageNum, pageSize);
+        
+        // 查询所有订单（支持搜索）
+        List<MallOrder> orders = mallOrderMapper.selectAllOrdersForAdmin(username, orderNo);
+        
+        List<OrderVo> orderVoList = new ArrayList<>();
+        for (MallOrder order : orders) {
+            List<MallOrderItem> orderItems = mallOrderItemMapper.selectByOrderNo(order.getOrderNo());
+            OrderVo orderVo = buildOrderVo(order, orderItems);
+            
+            // 为管理员视图添加用户信息
+            if (order.getUserId() != null) {
+                try {
+                    com.wuli.badminton.pojo.User user = userService.getUserById(order.getUserId());
+                    if (user != null) {
+                        orderVo.setUsername(user.getUsername());
+                        orderVo.setUserEmail(user.getEmail());
+                    }
+                } catch (Exception e) {
+                    logger.warn("【管理员查询订单】获取用户信息失败: userId={}, error={}", 
+                             order.getUserId(), e.getMessage());
+                }
+            }
+            
+            orderVoList.add(orderVo);
+        }
+        
+        PageInfo<MallOrder> pageInfo = new PageInfo<>(orders);
+        PageInfo<OrderVo> result = new PageInfo<>();
+        BeanUtils.copyProperties(pageInfo, result, "list");
+        result.setList(orderVoList);
+        
+        logger.info("【管理员查询订单】查询完成: 共{}条记录", result.getTotal());
+        return result;
+    }
+    
+    /**
+     * 管理员关闭订单
+     */
+    @Override
+    @Transactional
+    public boolean adminCloseOrder(Long orderNo) {
+        logger.info("【管理员关闭订单】开始处理: orderNo={}", orderNo);
+        
+        MallOrder order = mallOrderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            logger.warn("【管理员关闭订单】订单不存在: orderNo={}", orderNo);
+            return false;
+        }
+        
+        // 检查订单状态，只有未付款或已付款的订单可以关闭
+        if (!Objects.equals(order.getStatus(), MallOrder.STATUS_UNPAID) && 
+            !Objects.equals(order.getStatus(), MallOrder.STATUS_PAID)) {
+            logger.warn("【管理员关闭订单】订单状态不允许关闭: orderNo={}, status={}", 
+                     orderNo, order.getStatus());
+            return false;
+        }
+        
+        // 更新订单状态为已关闭
+        Date now = new Date();
+        boolean success = mallOrderMapper.updateStatusByOrderNo(orderNo, MallOrder.STATUS_CLOSED, now) > 0;
+        
+        if (success) {
+            logger.info("【管理员关闭订单】订单关闭成功: orderNo={}", orderNo);
+        } else {
+            logger.error("【管理员关闭订单】订单关闭失败: orderNo={}", orderNo);
+        }
+        
+        return success;
+    }
+    
+    /**
+     * 管理员验证提货码并完成订单
+     */
+    @Override
+    @Transactional
+    public boolean adminCompleteOrder(Long orderNo, String pickupCode) {
+        logger.info("【管理员完成订单】开始处理: orderNo={}, pickupCode={}", orderNo, pickupCode);
+        
+        if (pickupCode == null || pickupCode.trim().isEmpty()) {
+            logger.warn("【管理员完成订单】提货码不能为空: orderNo={}", orderNo);
+            return false;
+        }
+        
+        MallOrder order = mallOrderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            logger.warn("【管理员完成订单】订单不存在: orderNo={}", orderNo);
+            return false;
+        }
+        
+        // 检查订单状态，只有已付款的订单可以完成
+        if (!Objects.equals(order.getStatus(), MallOrder.STATUS_PAID)) {
+            logger.warn("【管理员完成订单】订单状态不允许完成: orderNo={}, status={}", 
+                     orderNo, order.getStatus());
+            return false;
+        }
+        
+        // 验证提货码
+        if (!pickupCode.trim().equals(order.getPickupCode())) {
+            logger.warn("【管理员完成订单】提货码不正确: orderNo={}, 输入={}, 正确={}", 
+                     orderNo, pickupCode, order.getPickupCode());
+            return false;
+        }
+        
+        // 更新订单状态为已完成
+        Date now = new Date();
+        boolean success = mallOrderMapper.updateStatusByOrderNo(orderNo, MallOrder.STATUS_COMPLETED, now) > 0;
+        
+        if (success) {
+            logger.info("【管理员完成订单】订单完成成功: orderNo={}", orderNo);
+        } else {
+            logger.error("【管理员完成订单】订单完成失败: orderNo={}", orderNo);
+        }
+        
+        return success;
+    }
 } 

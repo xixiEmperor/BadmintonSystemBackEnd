@@ -51,6 +51,14 @@ public interface MallOrderMapper {
     List<MallOrder> selectByUserIdAndStatus(@Param("userId") Long userId, @Param("status") Integer status);
     
     /**
+     * 管理员查询所有订单列表（支持搜索）
+     * @param username 用户名搜索，null表示不按用户名搜索
+     * @param orderNo 订单号搜索，null表示不按订单号搜索
+     * @return 订单列表
+     */
+    List<MallOrder> selectAllOrdersForAdmin(@Param("username") String username, @Param("orderNo") Long orderNo);
+    
+    /**
      * 更新订单状态
      * @param orderNo 订单号
      * @param status 状态
