@@ -645,9 +645,9 @@ public class MallOrderServiceImpl implements MallOrderService {
             return false;
         }
         
-        // 检查订单状态，只有未付款或已付款的订单可以关闭
-        if (!Objects.equals(order.getStatus(), MallOrder.STATUS_UNPAID) && 
-            !Objects.equals(order.getStatus(), MallOrder.STATUS_PAID)) {
+        // 检查订单状态，只有已付款或已完成的订单可以关闭
+        if (!Objects.equals(order.getStatus(), MallOrder.STATUS_PAID) && 
+            !Objects.equals(order.getStatus(), MallOrder.STATUS_COMPLETED)) {
             logger.warn("【管理员关闭订单】订单状态不允许关闭: orderNo={}, status={}", 
                      orderNo, order.getStatus());
             return false;
