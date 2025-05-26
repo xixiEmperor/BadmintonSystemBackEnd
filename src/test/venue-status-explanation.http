@@ -1,0 +1,217 @@
+### 场地状态计算和映射详解
+
+## 1. 数据源说明
+# 系统没有专门的状态表，而是通过以下数据实时计算：
+# - venue表：场地基础信息（id=1的场地是否启用）
+# - reservation_order表：预约记录（哪些时段被预约了）
+# - special_date_config表：特殊日期配置（节假日、维护等）
+
+🎨 前端状态映射
+// 优先级从高到低：
+1. 场地维护状态 (venue.status != 1) → status=4 维护中
+2. 特殊日期配置 → 按配置返回状态  
+3. 预约记录冲突 → status=3 已预约
+4. 默认业务规则 → status=2 使用中 或 status=1 空闲中
+
+## 2. 查询某日期所有场地状态矩阵
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25
+Accept: application/json
+
+### 返回数据结构解析：
+/*
+{
+  "code": 0,
+  "msg": "成功", 
+  "data": {
+    "date": "2024-12-25",
+    "venues": [
+      {
+        "id": 1,
+        "name": "羽毛球场1号",
+        "location": "体育馆1楼",
+        "pricePerHour": 30.00,
+        "isAvailable": true  // 场地基础状态：从venue.status字段计算
+      }
+    ],
+    "timeSlots": [
+      "08:00-09:00", "09:00-10:00", "10:00-11:00", 
+      "18:00-19:00", "19:00-20:00", "20:00-21:00"
+    ],
+    "statusMatrix": {
+      "1": {  // 场地ID为key
+        "08:00-09:00": {
+          "status": 2,           // 状态码：1-空闲，2-使用中，3-已预约，4-维护
+          "statusDesc": "使用中", // 状态描述
+          "bookable": false,     // 是否可预约
+          "reason": "教学时间"    // 状态原因
+        },
+        "19:00-20:00": {
+          "status": 3,
+          "statusDesc": "已预约",
+          "bookable": false,
+          "reason": "用户张三预约",
+          "reservationId": 12345,  // 预约订单ID
+          "username": "张三"       // 预约用户
+        },
+        "20:00-21:00": {
+          "status": 1,
+          "statusDesc": "空闲中",
+          "bookable": true,
+          "reason": null
+        }
+      }
+    }
+  }
+}
+*/
+
+## 3. 状态计算的优先级和逻辑
+
+### 3.1 检查场地基础状态（最高优先级）
+# 如果venue.status != 1（可用），则所有时段都是维护中
+# SQL: SELECT status FROM venue WHERE id = 1
+# 如果status = 0，则返回：
+# {
+#   "status": 4,
+#   "statusDesc": "维护中", 
+#   "bookable": false,
+#   "reason": "场地维护"
+# }
+
+### 3.2 检查特殊日期配置（第二优先级）
+# SQL: SELECT * FROM special_date_config WHERE special_date = '2024-12-25' AND enabled = 1
+# 如果有匹配的配置，按配置返回状态
+
+### 3.3 检查预约记录（第三优先级）
+# SQL: SELECT * FROM reservation_order 
+#      WHERE venue_id = 1 AND reservation_date = '2024-12-25' 
+#      AND status IN (1,2,3) -- 待支付、已支付、已完成
+#      AND NOT (end_time <= '19:00' OR start_time >= '20:00')
+# 如果有冲突记录，返回：
+# {
+#   "status": 3,
+#   "statusDesc": "已预约",
+#   "bookable": false, 
+#   "reason": "用户张三预约",
+#   "reservationId": 12345,
+#   "username": "张三"
+# }
+
+### 3.4 应用默认业务规则（最低优先级）
+# 工作日08:00-18:00 = 教学时间（status=2，不可预约）
+# 其他时间 = 空闲中（status=1，可预约）
+
+## 4. 前端状态映射和显示
+
+### 4.1 状态码映射
+/*
+const STATUS_MAP = {
+  1: { name: '空闲中', color: '#52c41a', bookable: true },   // 绿色
+  2: { name: '使用中', color: '#faad14', bookable: false },  // 黄色  
+  3: { name: '已预约', color: '#f5222d', bookable: false },  // 红色
+  4: { name: '维护中', color: '#d9d9d9', bookable: false }   // 灰色
+};
+
+function renderVenueMatrix(data) {
+  const { venues, timeSlots, statusMatrix } = data;
+  
+  venues.forEach(venue => {
+    timeSlots.forEach(timeSlot => {
+      const slotStatus = statusMatrix[venue.id][timeSlot];
+      const statusInfo = STATUS_MAP[slotStatus.status];
+      
+      // 渲染单元格
+      const cell = document.getElementById(`venue-${venue.id}-${timeSlot}`);
+      cell.style.backgroundColor = statusInfo.color;
+      cell.textContent = statusInfo.name;
+      cell.disabled = !statusInfo.bookable;
+      
+      // 添加详细信息
+      if (slotStatus.reason) {
+        cell.title = slotStatus.reason;
+      }
+      
+      // 预约按钮状态
+      if (statusInfo.bookable) {
+        cell.onclick = () => bookVenue(venue.id, timeSlot);
+      }
+    });
+  });
+}
+*/
+
+## 5. 查询特定时间段的可用场地
+GET http://localhost:8080/api/venue/availability?date=2024-12-25&startTime=19:00&endTime=20:00
+Accept: application/json
+
+### 返回可用和不可用场地列表：
+/*
+{
+  "code": 0,
+  "data": {
+    "date": "2024-12-25",
+    "timeSlot": "19:00-20:00",
+    "totalVenues": 5,
+    "totalAvailable": 3,
+    "availableVenues": [
+      {
+        "id": 2,
+        "name": "羽毛球场2号", 
+        "pricePerHour": 35.00,
+        "isRecommended": true,
+        "recommendReason": "价格优惠、周末可用"
+      }
+    ],
+    "unavailableVenues": [
+      {
+        "id": 1,
+        "name": "羽毛球场1号",
+        "unavailableReason": "该时间段已被用户张三预约",
+        "status": 3,
+        "statusDesc": "已预约"
+      }
+    ]
+  }
+}
+*/
+
+## 6. 实际的数据库查询过程
+
+### 6.1 获取场地列表
+# SELECT id, name, location, price_per_hour, status FROM venue WHERE status = 1
+
+### 6.2 获取预约记录  
+# SELECT * FROM reservation_order 
+# WHERE venue_id IN (1,2,3,4,5) 
+# AND reservation_date = '2024-12-25'
+# AND status IN (1,2,3)
+
+### 6.3 获取特殊配置
+# SELECT * FROM special_date_config 
+# WHERE special_date = '2024-12-25' 
+# AND enabled = 1
+
+### 6.4 在Java代码中计算每个时间段状态
+# 遍历每个场地的每个时间段，按优先级检查：
+# 1. 场地是否维护 → status=4
+# 2. 是否有特殊配置 → 按配置返回
+# 3. 是否有预约冲突 → status=3  
+# 4. 是否教学时间 → status=2
+# 5. 默认空闲 → status=1
+
+## 7. 关键理解点
+
+### 7.1 没有状态表的优势
+# ✅ 数据一致性：状态总是基于最新的预约记录计算
+# ✅ 简化维护：不需要同步多个表的状态
+# ✅ 灵活性：可以轻松修改业务规则
+
+### 7.2 实时计算的成本
+# ⚠️ 每次查询都需要计算
+# ⚠️ 复杂查询可能影响性能
+# ✅ 通过悲观锁解决并发问题
+
+### 7.3 前端缓存策略
+# 📱 状态矩阵可缓存30-60秒
+# 🔄 预约前必须实时检查
+# 🎯 用户操作时立即刷新 

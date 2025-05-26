@@ -1,0 +1,161 @@
+### 用户到场签到流程演示
+
+## 1. 场景设置
+# 假设：用户张三预约了2024-12-25 19:00-20:00 的1号场地
+# 订单状态：已支付(status=2)
+# 现在用户到场了，管理员需要确认签到
+
+## 2. 管理员查看当前时段的预约情况
+GET http://localhost:8080/api/reservations/venue/1?date=2024-12-25
+Authorization: Bearer {{admin_token}}
+
+### 返回数据示例：
+/*
+{
+  "code": 0,
+  "data": [
+    {
+      "id": 123,
+      "orderNo": "RO1703520000123",
+      "venueId": 1,
+      "venueName": "羽毛球场1号",
+      "username": "张三",
+      "reservationDate": "2024-12-25",
+      "startTime": "19:00",
+      "endTime": "20:00",
+      "status": 2,
+      "statusDesc": "已支付",
+      "totalAmount": 30.00,
+      "createTime": "2024-12-25 18:30:00"
+    }
+  ]
+}
+*/
+
+## 3. 用户到场，管理员确认签到（完成订单）
+POST http://localhost:8080/api/reservations/admin/123/complete
+Authorization: Bearer {{admin_token}}
+
+### 成功响应：
+/*
+{
+  "code": 0,
+  "msg": "订单完成",
+  "data": "订单完成"
+}
+*/
+
+## 4. 验证状态变化 - 查看场地状态矩阵
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 状态变化对比：
+
+# 用户到场前（19:00-20:00时段）：
+/*
+"19:00-20:00": {
+  "status": 3,           // 已预约
+  "statusDesc": "已预约",
+  "bookable": false,
+  "reason": "用户张三预约",
+  "reservationId": 123,
+  "username": "张三"
+}
+*/
+
+# 用户到场后（19:00-20:00时段）：
+/*
+"19:00-20:00": {
+  "status": 2,           // 使用中
+  "statusDesc": "使用中", 
+  "bookable": false,
+  "reason": "用户张三正在使用",
+  "reservationId": 123,
+  "username": "张三"
+}
+*/
+
+## 5. 用户使用完毕离场（系统自动处理）
+# 当预约时间结束后（20:00），系统会自动将状态变为：
+/*
+"19:00-20:00": {
+  "status": 1,           // 空闲中（历史时段）
+  "statusDesc": "空闲中",
+  "bookable": false,     // 过去的时段不可预约
+  "reason": "已过期"
+}
+*/
+
+## 6. 状态计算的核心逻辑
+
+### 6.1 订单状态驱动场地状态
+/*
+订单状态 → 场地时段状态映射：
+
+1. status=1 (待支付) → 场地状态=1 (空闲中，因为未支付)
+2. status=2 (已支付) → 场地状态=3 (已预约)  
+3. status=3 (已完成) → 场地状态=2 (使用中，在预约时间内)
+4. status=4 (已取消) → 场地状态=1 (空闲中)
+5. status=5 (已关闭) → 场地状态=1 (空闲中)
+*/
+
+### 6.2 时间判断逻辑
+/*
+当前时间 vs 预约时间：
+
+- 当前时间 < 预约开始时间 → 已预约(3)
+- 预约开始时间 ≤ 当前时间 ≤ 预约结束时间 → 使用中(2) 
+- 当前时间 > 预约结束时间 → 空闲中(1)
+*/
+
+## 7. 管理员操作权限
+
+### 7.1 查看所有预约订单
+GET http://localhost:8080/api/reservations/admin/orders?page=1&size=10&status=2
+Authorization: Bearer {{admin_token}}
+
+### 7.2 完成订单（用户到场签到）
+POST http://localhost:8080/api/reservations/admin/{orderId}/complete
+Authorization: Bearer {{admin_token}}
+
+### 7.3 处理退款申请
+POST http://localhost:8080/api/reservations/admin/{orderId}/approve-refund?approved=true&adminRemark=用户有合理理由
+Authorization: Bearer {{admin_token}}
+
+## 8. 前端管理界面建议
+
+### 8.1 实时监控面板
+/*
+管理员界面应该显示：
+
+1. 当前时段正在使用的场地列表
+2. 即将开始的预约列表（提醒用户到场）
+3. 待处理的退款申请
+4. 场地状态实时矩阵
+*/
+
+### 8.2 快速操作按钮
+/*
+每个预约记录旁边应该有：
+
+- [确认到场] 按钮 → 调用完成订单接口
+- [查看详情] 按钮 → 显示订单详细信息
+- [联系用户] 按钮 → 显示用户联系方式
+*/
+
+## 9. 系统优势
+
+### 9.1 数据一致性
+# ✅ 场地状态完全基于订单状态计算
+# ✅ 不会出现状态不同步的问题
+# ✅ 历史记录完整保留
+
+### 9.2 操作简单
+# ✅ 管理员只需要"完成订单"一个操作
+# ✅ 系统自动处理状态变化
+# ✅ 支持批量操作
+
+### 9.3 业务灵活
+# ✅ 可以处理提前离场、延时使用等特殊情况
+# ✅ 支持退款、取消等复杂业务流程
+# ✅ 便于统计和分析 

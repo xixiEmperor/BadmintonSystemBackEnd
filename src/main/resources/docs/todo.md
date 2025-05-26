@@ -185,7 +185,7 @@ reservationOrderRepository.save(order);
 📌 这是**最推荐的做法**，灵活且高效。
 
 ---
-
+//TODO: 做并发控制 避免A B 用户都显示可预约 然后都创建预约单
 ### ❌ 方案二：使用 `venue_schedule` 表预生成所有场地所有时段的状态
 
 #### 数据表：`venue_schedule`

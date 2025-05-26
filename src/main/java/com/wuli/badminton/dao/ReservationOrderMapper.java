@@ -71,6 +71,15 @@ public interface ReservationOrderMapper {
                                                @Param("endTime") String endTime);
     
     /**
+     * 查询场地在指定时间段的冲突订单（带悲观锁）
+     * （状态为待支付、已支付、已完成的订单）
+     */
+    List<ReservationOrder> selectConflictOrdersForUpdate(@Param("venueId") Integer venueId,
+                                                        @Param("reservationDate") Date reservationDate,
+                                                        @Param("startTime") String startTime,
+                                                        @Param("endTime") String endTime);
+    
+    /**
      * 查询用户的订单列表
      */
     List<ReservationOrder> selectByUserId(@Param("userId") Integer userId, 

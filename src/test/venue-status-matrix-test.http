@@ -1,0 +1,161 @@
+### 测试场地状态矩阵接口
+
+# 1. 获取所有场地的状态矩阵（今天的日期）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-01-15
+Content-Type: application/json
+
+###
+
+# 2. 获取指定场地的状态矩阵
+GET http://localhost:8080/api/venue/status-matrix?date=2024-01-15&venueId=1
+Content-Type: application/json
+
+###
+
+# 3. 获取明天的状态矩阵
+GET http://localhost:8080/api/venue/status-matrix?date=2024-01-16
+Content-Type: application/json
+
+###
+
+# 4. 获取周末的状态矩阵（验证工作日和周末规则的不同）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-01-20
+Content-Type: application/json
+
+###
+
+# 5. 测试错误的日期格式
+GET http://localhost:8080/api/venue/status-matrix?date=2024/01/15
+Content-Type: application/json
+
+###
+
+# 6. 测试不存在的场地ID
+GET http://localhost:8080/api/venue/status-matrix?date=2024-01-15&venueId=999
+Content-Type: application/json
+
+### 场地状态矩阵测试 - 前端实时更新策略演示
+
+### 1. 页面初始加载 - 获取状态矩阵
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25
+Accept: application/json
+
+### 2. 用户点击预约前的可用性检查
+GET http://localhost:8080/api/venue/availability?date=2024-12-25&startTime=19:00&endTime=20:00&venueId=1
+Accept: application/json
+
+### 3. 创建预约订单（后端悲观锁保护）
+POST http://localhost:8080/api/reservation/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "venueId": 1,
+  "reservationDate": "2024-12-25",
+  "startTime": "19:00",
+  "endTime": "20:00",
+  "payType": 1,
+  "remark": "前端测试预约"
+}
+
+### 4. 预约成功后，刷新状态矩阵验证
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25
+Accept: application/json
+
+### 前端JavaScript示例代码：
+
+/*
+// 1. 智能轮询策略
+class VenueStatusManager {
+    constructor() {
+        this.isActive = true;
+        this.pollingInterval = null;
+        this.lastUpdateTime = null;
+    }
+    
+    // 开始轮询（仅在必要时）
+    startPolling() {
+        if (this.isUserInteracting()) {
+            this.pollingInterval = setInterval(() => {
+                this.updateVenueStatus();
+            }, 30000); // 30秒
+        }
+    }
+    
+    // 停止轮询
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+    
+    // 检测用户是否在交互
+    isUserInteracting() {
+        return document.hasFocus() && this.isActive;
+    }
+    
+    // 预约前的实时检查
+    async checkBeforeBooking(venueId, date, startTime, endTime) {
+        const response = await fetch(`/api/venue/availability?venueId=${venueId}&date=${date}&startTime=${startTime}&endTime=${endTime}`);
+        const data = await response.json();
+        
+        if (data.code === 0 && data.data.totalAvailable > 0) {
+            return true;
+        } else {
+            // 显示最新的不可用原因
+            this.showUnavailableReason(data.data.unavailableVenues[0]?.unavailableReason);
+            this.refreshMatrix(); // 刷新矩阵显示最新状态
+            return false;
+        }
+    }
+}
+
+// 2. 事件驱动更新
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        venueManager.stopPolling();
+    } else {
+        venueManager.startPolling();
+        venueManager.refreshMatrix(); // 页面重新可见时立即刷新
+    }
+});
+
+// 3. 预约流程优化
+async function bookVenue(venueId, date, startTime, endTime) {
+    // 显示加载状态
+    showBookingLoader();
+    
+    try {
+        // 1. 预约前再次检查
+        const isAvailable = await venueManager.checkBeforeBooking(venueId, date, startTime, endTime);
+        if (!isAvailable) {
+            return;
+        }
+        
+        // 2. 立即创建订单
+        const orderResult = await createOrder({
+            venueId, 
+            reservationDate: date,
+            startTime,
+            endTime,
+            payType: 1
+        });
+        
+        if (orderResult.code === 0) {
+            // 3. 预约成功，跳转支付
+            window.location.href = `/payment?orderNo=${orderResult.data.orderNo}`;
+        } else {
+            // 4. 预约失败，显示错误并刷新状态
+            showError(orderResult.msg);
+            venueManager.refreshMatrix();
+        }
+        
+    } catch (error) {
+        showError('网络错误，请重试');
+        venueManager.refreshMatrix();
+    } finally {
+        hideBookingLoader();
+    }
+}
+*/ 

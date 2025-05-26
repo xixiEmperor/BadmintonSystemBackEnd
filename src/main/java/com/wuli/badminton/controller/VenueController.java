@@ -1,9 +1,13 @@
 package com.wuli.badminton.controller;
 
 import com.wuli.badminton.dto.VenueDto;
+import com.wuli.badminton.dto.VenueStatusMatrixDto;
+import com.wuli.badminton.dto.VenueAvailabilityQueryDto;
 import com.wuli.badminton.service.VenueService;
 import com.wuli.badminton.vo.ResponseVo;
 import com.wuli.badminton.vo.VenueVo;
+import com.wuli.badminton.vo.VenueStatusMatrixVo;
+import com.wuli.badminton.vo.VenueAvailabilityVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +33,24 @@ public class VenueController {
     @GetMapping("/list")
     public ResponseVo<List<VenueVo>> getAllVenues() {
         return venueService.getAllVenues();
+    }
+    
+    /**
+     * 获取场地状态矩阵（用于可视化展示）
+     */
+    @GetMapping("/status-matrix")
+    public ResponseVo<VenueStatusMatrixVo> getVenueStatusMatrix(@Valid VenueStatusMatrixDto dto) {
+        log.info("【场地状态矩阵】查询日期: {}, 场地ID: {}", dto.getDate(), dto.getVenueId());
+        return venueService.getVenueStatusMatrix(dto);
+    }
+    
+    /**
+     * 按时间段查询场地可用性（用于查找可用场地）
+     */
+    @GetMapping("/availability")
+    public ResponseVo<VenueAvailabilityVo> queryVenueAvailability(@Valid VenueAvailabilityQueryDto dto) {
+        log.info("【查询场地可用性】日期: {}, 时间段: {}-{}", dto.getDate(), dto.getStartTime(), dto.getEndTime());
+        return venueService.queryVenueAvailability(dto);
     }
     
     /**

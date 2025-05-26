@@ -1,8 +1,12 @@
 package com.wuli.badminton.service;
 
 import com.wuli.badminton.dto.VenueDto;
+import com.wuli.badminton.dto.VenueStatusMatrixDto;
+import com.wuli.badminton.dto.VenueAvailabilityQueryDto;
 import com.wuli.badminton.vo.ResponseVo;
 import com.wuli.badminton.vo.VenueVo;
+import com.wuli.badminton.vo.VenueStatusMatrixVo;
+import com.wuli.badminton.vo.VenueAvailabilityVo;
 import java.util.List;
 
 /**
@@ -44,4 +48,14 @@ public interface VenueService {
      * 根据状态获取场地列表
      */
     ResponseVo<List<VenueVo>> getVenuesByStatus(Integer status);
+    
+    /**
+     * 获取场地状态矩阵（用于可视化展示）
+     */
+    ResponseVo<VenueStatusMatrixVo> getVenueStatusMatrix(VenueStatusMatrixDto dto);
+    
+    /**
+     * 按时间段查询场地可用性（用于查找可用场地）
+     */
+    ResponseVo<VenueAvailabilityVo> queryVenueAvailability(VenueAvailabilityQueryDto dto);
 } 

@@ -1,0 +1,351 @@
+### 场地库存管理机制测试
+
+## 1. 测试场景说明
+# 场地预约的"库存"管理不同于商品库存：
+# - 商品库存：数量型（100件商品 -> 99件）
+# - 场地库存：时段型（19:00-20:00时段只能被一个用户预约）
+
+## 2. 核心设计原理
+
+### 2.1 库存扣减时机
+# ✅ 正确做法：创建订单时立即占用时段（状态=待支付）
+# ❌ 错误做法：支付成功后才占用时段
+
+### 2.2 并发控制机制
+# 使用数据库悲观锁（FOR UPDATE）确保同一时段只能被一个用户预约
+
+### 2.3 状态管理
+# 1-待支付：占用时段，其他用户无法预约
+# 2-已支付：继续占用时段
+# 3-已完成：用户到场使用
+# 4-已取消：释放时段，其他用户可预约
+# 5-退款中：仍占用时段，直到退款完成
+
+## 3. 并发测试场景
+
+### 3.1 场景：两个用户同时预约同一时段
+# 用户A和用户B同时尝试预约 2024-12-25 19:00-20:00 的1号场地
+
+### 用户A创建订单（应该成功）
+POST http://localhost:8080/api/reservations/create
+Content-Type: application/json
+Authorization: Bearer {{userA_token}}
+
+{
+  "venueId": 1,
+  "reservationDate": "2024-12-25",
+  "startTime": "19:00",
+  "endTime": "20:00",
+  "payType": 1,
+  "remark": "用户A的预约"
+}
+
+### 用户B创建订单（应该失败 - 时间冲突）
+POST http://localhost:8080/api/reservations/create
+Content-Type: application/json
+Authorization: Bearer {{userB_token}}
+
+{
+  "venueId": 1,
+  "reservationDate": "2024-12-25",
+  "startTime": "19:00",
+  "endTime": "20:00",
+  "payType": 1,
+  "remark": "用户B的预约"
+}
+
+### 预期结果：
+/*
+用户A：
+{
+  "code": 0,
+  "msg": "成功",
+  "data": {
+    "id": 123,
+    "orderNo": "RO1703520000123",
+    "status": 1,
+    "statusDesc": "待支付"
+  }
+}
+
+用户B：
+{
+  "code": 40008,
+  "msg": "预约时间冲突",
+  "data": null
+}
+*/
+
+## 4. 状态变化测试
+
+### 4.1 查看当前状态矩阵（用户A创建订单后）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 预期结果：19:00-20:00时段状态
+/*
+"19:00-20:00": {
+  "status": 3,           // 已预约
+  "statusDesc": "已预约",
+  "bookable": false,
+  "reason": "用户A预约中（待支付）",
+  "reservationId": 123,
+  "username": "userA"
+}
+*/
+
+### 4.2 用户A支付成功
+POST http://localhost:8080/api/pay/notify
+Content-Type: application/json
+
+{
+  "orderNo": "RO1703520000123",
+  "payPlatform": 1,
+  "platformNumber": "alipay_20241225123456",
+  "payAmount": 30.00,
+  "businessType": "RESERVATION"
+}
+
+### 4.3 查看支付后状态（状态描述变化）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 预期结果：
+/*
+"19:00-20:00": {
+  "status": 3,           // 仍然是已预约
+  "statusDesc": "已预约",
+  "bookable": false,
+  "reason": "用户A预约",  // 描述变化（去掉"待支付"）
+  "reservationId": 123,
+  "username": "userA"
+}
+*/
+
+### 4.4 用户A到场，管理员确认
+POST http://localhost:8080/api/reservations/admin/123/complete
+Authorization: Bearer {{admin_token}}
+
+### 4.5 查看到场后状态
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 预期结果：
+/*
+"19:00-20:00": {
+  "status": 2,           // 使用中
+  "statusDesc": "使用中",
+  "bookable": false,
+  "reason": "用户A正在使用",
+  "reservationId": 123,
+  "username": "userA"
+}
+*/
+
+## 5. 订单取消释放库存测试
+
+### 5.1 用户C创建订单
+POST http://localhost:8080/api/reservations/create
+Content-Type: application/json
+Authorization: Bearer {{userC_token}}
+
+{
+  "venueId": 1,
+  "reservationDate": "2024-12-25",
+  "startTime": "20:00",
+  "endTime": "21:00",
+  "payType": 1,
+  "remark": "用户C的预约"
+}
+
+### 5.2 查看状态（应该占用20:00-21:00时段）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 5.3 用户C取消订单
+POST http://localhost:8080/api/reservations/{{orderC_id}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{userC_token}}
+
+{
+  "reason": "临时有事，无法前往"
+}
+
+### 5.4 查看取消后状态（时段应该释放）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+### 预期结果：20:00-21:00时段恢复空闲
+/*
+"20:00-21:00": {
+  "status": 1,           // 空闲中
+  "statusDesc": "空闲中",
+  "bookable": true,
+  "reason": null
+}
+*/
+
+### 5.5 用户D现在可以预约这个时段
+POST http://localhost:8080/api/reservations/create
+Content-Type: application/json
+Authorization: Bearer {{userD_token}}
+
+{
+  "venueId": 1,
+  "reservationDate": "2024-12-25",
+  "startTime": "20:00",
+  "endTime": "21:00",
+  "payType": 1,
+  "remark": "用户D的预约"
+}
+
+### 预期结果：应该成功
+/*
+{
+  "code": 0,
+  "msg": "成功",
+  "data": {
+    "id": 125,
+    "orderNo": "RO1703520000125",
+    "status": 1,
+    "statusDesc": "待支付"
+  }
+}
+*/
+
+## 6. 延时队列自动取消测试
+
+### 6.1 创建订单但不支付
+POST http://localhost:8080/api/reservations/create
+Content-Type: application/json
+Authorization: Bearer {{userE_token}}
+
+{
+  "venueId": 2,
+  "reservationDate": "2024-12-25",
+  "startTime": "18:00",
+  "endTime": "19:00",
+  "payType": 1,
+  "remark": "测试自动取消"
+}
+
+### 6.2 立即查看状态（应该占用）
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=2
+Accept: application/json
+
+### 6.3 等待10分钟后查看状态（应该自动释放）
+# 系统会通过延时队列自动取消未支付订单
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=2
+Accept: application/json
+
+### 预期结果：时段自动释放
+/*
+"18:00-19:00": {
+  "status": 1,           // 空闲中
+  "statusDesc": "空闲中",
+  "bookable": true,
+  "reason": null
+}
+*/
+
+## 7. 系统优势总结
+
+### 7.1 数据一致性
+# ✅ 场地状态完全基于订单记录计算
+# ✅ 不存在状态不同步问题
+# ✅ 支持复杂的业务状态变化
+
+### 7.2 并发安全
+# ✅ 悲观锁确保同一时段只能被一个用户预约
+# ✅ 事务保证操作原子性
+# ✅ 避免超卖问题
+
+### 7.3 业务灵活性
+# ✅ 支持订单取消自动释放时段
+# ✅ 支持延时队列自动清理
+# ✅ 支持管理员手动操作
+# ✅ 支持退款等复杂流程
+
+### 7.4 性能考虑
+# ✅ 实时计算，无需维护复杂的状态表
+# ✅ 可通过缓存优化查询性能
+# ✅ 支持按需查询，减少无效计算
+
+## 8. 与商品库存的对比
+
+### 商品库存管理：
+```java
+// 创建订单时不扣库存，支付成功后扣库存
+createOrder() -> status=待支付 (库存不变)
+paySuccess() -> status=已支付 (扣减库存)
+```
+
+### 场地时段管理：
+```java
+// 创建订单时立即占用时段
+createOrder() -> status=待支付 (时段被占用)
+paySuccess() -> status=已支付 (时段继续占用)
+cancelOrder() -> status=已取消 (时段释放)
+```
+
+### 核心区别：
+# 1. 商品有数量概念，场地只有占用/空闲概念
+# 2. 商品库存可以超卖后补货，场地时段不能重复预约
+# 3. 商品订单取消不影响其他订单，场地订单取消会释放时段给其他用户
+
+## 9. 前端集成建议
+
+### 9.1 实时状态检查
+```javascript
+// 用户点击预约前，先检查最新状态
+async function checkAvailability(venueId, date, startTime, endTime) {
+    const response = await fetch(`/api/venue/availability?venueId=${venueId}&date=${date}&startTime=${startTime}&endTime=${endTime}`);
+    return response.json();
+}
+
+// 创建订单前的二次确认
+async function createReservation(orderData) {
+    // 1. 先检查可用性
+    const availability = await checkAvailability(orderData.venueId, orderData.date, orderData.startTime, orderData.endTime);
+    
+    if (!availability.data.availableVenues.length) {
+        alert('该时段已被预约，请选择其他时间');
+        return;
+    }
+    
+    // 2. 创建订单
+    const response = await fetch('/api/reservations/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+    });
+    
+    return response.json();
+}
+```
+
+### 9.2 状态矩阵展示
+```javascript
+// 状态颜色映射
+const statusColors = {
+    1: '#52c41a', // 空闲中 - 绿色
+    2: '#faad14', // 使用中 - 橙色  
+    3: '#f5222d', // 已预约 - 红色
+    4: '#d9d9d9'  // 维护中 - 灰色
+};
+
+// 渲染状态矩阵
+function renderStatusMatrix(matrixData) {
+    matrixData.timeSlots.forEach(timeSlot => {
+        matrixData.venues.forEach(venue => {
+            const status = matrixData.statusMatrix[venue.id][timeSlot];
+            const cell = document.getElementById(`cell-${venue.id}-${timeSlot}`);
+            
+            cell.style.backgroundColor = statusColors[status.status];
+            cell.textContent = status.statusDesc;
+            cell.title = status.reason || '';
+            cell.disabled = !status.bookable;
+        });
+    });
+}
+``` 

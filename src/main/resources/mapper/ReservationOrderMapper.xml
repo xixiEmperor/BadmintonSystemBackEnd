@@ -199,6 +199,20 @@
         )
     </select>
 
+    <!-- 查询场地在指定时间段的冲突订单（带悲观锁） -->
+    <select id="selectConflictOrdersForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE venue_id = #{venueId,jdbcType=INTEGER}
+        AND reservation_date = #{reservationDate,jdbcType=DATE}
+        AND status IN (1, 2, 3) -- 待支付、已支付、已完成
+        AND NOT (
+            end_time &lt;= #{startTime,jdbcType=VARCHAR} 
+            OR start_time &gt;= #{endTime,jdbcType=VARCHAR}
+        )
+        FOR UPDATE
+    </select>
+
     <!-- 查询用户的订单列表 -->
     <select id="selectByUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>

@@ -85,12 +85,16 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             long minutes = java.time.Duration.between(startTime, endTime).toMinutes();
             BigDecimal duration = new BigDecimal(minutes).divide(new BigDecimal(60), 2, RoundingMode.HALF_UP);
             
-            // 5. 检查时间段冲突
-            List<ReservationOrder> conflicts = reservationOrderMapper.selectConflictOrders(
+            // 5. 检查时间段冲突（使用悲观锁解决并发问题）
+            List<ReservationOrder> conflicts = reservationOrderMapper.selectConflictOrdersForUpdate(
                     dto.getVenueId(), reservationDate, dto.getStartTime(), dto.getEndTime());
             if (!conflicts.isEmpty()) {
+                log.warn("【创建预约订单】时间段冲突，场地ID: {}, 日期: {}, 时间: {}-{}", 
+                        dto.getVenueId(), dto.getReservationDate(), dto.getStartTime(), dto.getEndTime());
                 return ResponseVo.error(ResponseEnum.RESERVATION_TIME_CONFLICT);
             }
+            
+            log.info("【创建预约订单】冲突检查通过，开始创建订单");
             
             // 6. 创建订单
             ReservationOrder order = new ReservationOrder();

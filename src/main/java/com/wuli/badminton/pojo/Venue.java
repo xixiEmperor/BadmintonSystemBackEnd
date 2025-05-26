@@ -42,7 +42,6 @@ public class Venue {
     
     /**
      * 场地基础状态：1-可用，0-不可用（用于场地本身的启用/禁用）
-     * 注意：这与VenueSchedule中的状态不同，VenueSchedule中的状态用于具体时间段
      */
     private Integer status;
     
