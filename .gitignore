@@ -1,5 +1,10 @@
 .idea/
 target/
 ./src/main/resources/static/
-./src/main/resources/application.yml
 ./src/test/*
+/src/test/java/com/wuli/badminton/PasswordGeneratorTest.java
+/src/test/java/com/wuli/badminton/service/impl/UserServiceImplTest.java
+/src/main/resources/sql/
+/src/main/resources/application.yml
+
+/.vscode/settings.json
