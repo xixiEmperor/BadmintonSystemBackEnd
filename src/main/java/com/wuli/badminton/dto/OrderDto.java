@@ -2,8 +2,6 @@ package com.wuli.badminton.dto;
 
 import com.wuli.badminton.pojo.MallOrder;
 import com.wuli.badminton.pojo.MallOrderItem;
-import com.wuli.badminton.pojo.MallOrder;
-import com.wuli.badminton.pojo.MallOrderItem;
 import lombok.Data;
 import java.util.List;
 

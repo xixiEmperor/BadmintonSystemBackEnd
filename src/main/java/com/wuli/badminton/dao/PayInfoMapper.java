@@ -1,10 +1,8 @@
 package com.wuli.badminton.dao;
 
 import com.wuli.badminton.pojo.PayInfo;
-import com.wuli.badminton.pojo.PayInfo;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import java.util.Date;
 
 /**
  * 支付信息数据访问接口

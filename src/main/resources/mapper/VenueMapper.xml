@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.VenueMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.Venue">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="location" property="location" jdbcType="VARCHAR"/>
+        <result column="price_per_hour" property="pricePerHour" jdbcType="DECIMAL"/>
+        <result column="type" property="type" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, name, description, location, price_per_hour, type, status, create_time, update_time
+    </sql>
+
+    <!-- 查询所有场地 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据ID查询场地 -->
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue
+        WHERE id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <!-- 根据状态查询场地 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue
+        WHERE status = #{status,jdbcType=INTEGER}
+        ORDER BY id ASC
+    </select>
+
+    <!-- 插入场地 -->
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.Venue" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO venue (name, description, location, price_per_hour, type, status, create_time, update_time)
+        VALUES (#{name,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR}, #{location,jdbcType=VARCHAR},
+                #{pricePerHour,jdbcType=DECIMAL}, #{type,jdbcType=INTEGER}, #{status,jdbcType=INTEGER},
+                #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP})
+    </insert>
+
+    <!-- 批量插入场地 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO venue (name, description, location, price_per_hour, type, status, create_time, update_time)
+        VALUES
+        <foreach collection="venues" item="venue" separator=",">
+            (#{venue.name,jdbcType=VARCHAR}, #{venue.description,jdbcType=VARCHAR}, #{venue.location,jdbcType=VARCHAR},
+             #{venue.pricePerHour,jdbcType=DECIMAL}, #{venue.type,jdbcType=INTEGER}, #{venue.status,jdbcType=INTEGER},
+             #{venue.createTime,jdbcType=TIMESTAMP}, #{venue.updateTime,jdbcType=TIMESTAMP})
+        </foreach>
+    </insert>
+
+    <!-- 更新场地 -->
+    <update id="updateById" parameterType="com.wuli.badminton.pojo.Venue">
+        UPDATE venue
+        SET name = #{name,jdbcType=VARCHAR},
+            description = #{description,jdbcType=VARCHAR},
+            location = #{location,jdbcType=VARCHAR},
+            price_per_hour = #{pricePerHour,jdbcType=DECIMAL},
+            type = #{type,jdbcType=INTEGER},
+            status = #{status,jdbcType=INTEGER},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <!-- 更新场地状态 -->
+    <update id="updateStatus">
+        UPDATE venue
+        SET status = #{status,jdbcType=INTEGER},
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <!-- 删除场地 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM venue
+        WHERE id = #{id,jdbcType=INTEGER}
+    </delete>
+
+    <!-- 统计场地数量 -->
+    <select id="countAll" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM venue
+    </select>
+
+    <!-- 根据状态统计场地数量 -->
+    <select id="countByStatus" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM venue WHERE status = #{status,jdbcType=INTEGER}
+    </select>
+
+</mapper> 

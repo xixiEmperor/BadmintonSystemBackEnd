@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.VenueScheduleMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.VenueSchedule">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="venue_id" property="venueId" jdbcType="INTEGER"/>
+        <result column="venue_name" property="venueName" jdbcType="VARCHAR"/>
+        <result column="schedule_date" property="scheduleDate" jdbcType="DATE"/>
+        <result column="start_time" property="startTime" jdbcType="VARCHAR"/>
+        <result column="end_time" property="endTime" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="bookable" property="bookable" jdbcType="INTEGER"/>
+        <result column="reservation_id" property="reservationId" jdbcType="BIGINT"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, venue_id, venue_name, schedule_date, start_time, end_time, status, bookable, 
+        reservation_id, remark, create_time, update_time
+    </sql>
+
+    <!-- 根据条件查询时间表 -->
+    <select id="selectByCondition" parameterType="com.wuli.badminton.dto.VenueScheduleQueryDto" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        <where>
+            <if test="scheduleDate != null">
+                AND schedule_date = #{scheduleDate,jdbcType=DATE}
+            </if>
+            <if test="venueId != null">
+                AND venue_id = #{venueId,jdbcType=INTEGER}
+            </if>
+            <if test="startTime != null and startTime != ''">
+                AND start_time = #{startTime,jdbcType=VARCHAR}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND end_time = #{endTime,jdbcType=VARCHAR}
+            </if>
+            <if test="status != null">
+                AND status = #{status,jdbcType=INTEGER}
+            </if>
+            <if test="bookable != null">
+                AND bookable = #{bookable,jdbcType=INTEGER}
+            </if>
+        </where>
+        ORDER BY venue_id ASC, start_time ASC
+    </select>
+
+    <!-- 根据日期和场地查询时间表 -->
+    <select id="selectByDateAndVenue" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE schedule_date = #{scheduleDate,jdbcType=DATE}
+        <if test="venueId != null">
+            AND venue_id = #{venueId,jdbcType=INTEGER}
+        </if>
+        ORDER BY venue_id ASC, start_time ASC
+    </select>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <!-- 查询特定场地在特定日期和时间段的记录 -->
+    <select id="selectByVenueAndDateTime" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE venue_id = #{venueId,jdbcType=INTEGER}
+        AND schedule_date = #{scheduleDate,jdbcType=DATE}
+        AND start_time = #{startTime,jdbcType=VARCHAR}
+        AND end_time = #{endTime,jdbcType=VARCHAR}
+    </select>
+
+    <!-- 检查时间段冲突 -->
+    <select id="selectConflictSchedules" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE venue_id = #{venueId,jdbcType=INTEGER}
+        AND schedule_date = #{scheduleDate,jdbcType=DATE}
+        AND (
+            (start_time &lt; #{endTime,jdbcType=VARCHAR} AND end_time &gt; #{startTime,jdbcType=VARCHAR})
+        )
+    </select>
+
+    <!-- 插入时间表记录 -->
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.VenueSchedule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO venue_schedule (venue_id, venue_name, schedule_date, start_time, end_time, 
+                                   status, bookable, reservation_id, remark, create_time, update_time)
+        VALUES (#{venueId,jdbcType=INTEGER}, #{venueName,jdbcType=VARCHAR}, #{scheduleDate,jdbcType=DATE},
+                #{startTime,jdbcType=VARCHAR}, #{endTime,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{bookable,jdbcType=INTEGER}, #{reservationId,jdbcType=BIGINT}, #{remark,jdbcType=VARCHAR},
+                #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP})
+    </insert>
+
+    <!-- 批量插入时间表记录 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO venue_schedule (venue_id, venue_name, schedule_date, start_time, end_time, 
+                                   status, bookable, reservation_id, remark, create_time, update_time)
+        VALUES
+        <foreach collection="schedules" item="schedule" separator=",">
+            (#{schedule.venueId,jdbcType=INTEGER}, #{schedule.venueName,jdbcType=VARCHAR}, 
+             #{schedule.scheduleDate,jdbcType=DATE}, #{schedule.startTime,jdbcType=VARCHAR}, 
+             #{schedule.endTime,jdbcType=VARCHAR}, #{schedule.status,jdbcType=INTEGER},
+             #{schedule.bookable,jdbcType=INTEGER}, #{schedule.reservationId,jdbcType=BIGINT}, 
+             #{schedule.remark,jdbcType=VARCHAR}, #{schedule.createTime,jdbcType=TIMESTAMP}, 
+             #{schedule.updateTime,jdbcType=TIMESTAMP})
+        </foreach>
+    </insert>
+
+    <!-- 更新时间表记录 -->
+    <update id="updateById" parameterType="com.wuli.badminton.pojo.VenueSchedule">
+        UPDATE venue_schedule
+        SET venue_id = #{venueId,jdbcType=INTEGER},
+            venue_name = #{venueName,jdbcType=VARCHAR},
+            schedule_date = #{scheduleDate,jdbcType=DATE},
+            start_time = #{startTime,jdbcType=VARCHAR},
+            end_time = #{endTime,jdbcType=VARCHAR},
+            status = #{status,jdbcType=INTEGER},
+            bookable = #{bookable,jdbcType=INTEGER},
+            reservation_id = #{reservationId,jdbcType=BIGINT},
+            remark = #{remark,jdbcType=VARCHAR},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新状态 -->
+    <update id="updateStatus">
+        UPDATE venue_schedule
+        SET status = #{status,jdbcType=INTEGER},
+            <if test="reservationId != null">
+                reservation_id = #{reservationId,jdbcType=BIGINT},
+            </if>
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新场地时间表状态 -->
+    <update id="updateStatusById">
+        UPDATE venue_schedule
+        SET status = #{status,jdbcType=INTEGER},
+            <if test="reservationId != null">
+                reservation_id = #{reservationId,jdbcType=BIGINT},
+            </if>
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 批量更新状态 -->
+    <update id="updateStatusBatch">
+        UPDATE venue_schedule
+        SET status = #{status,jdbcType=INTEGER},
+            bookable = #{bookable,jdbcType=INTEGER},
+            update_time = NOW()
+        WHERE venue_id IN
+        <foreach collection="venueIds" item="venueId" open="(" separator="," close=")">
+            #{venueId}
+        </foreach>
+        AND schedule_date = #{scheduleDate,jdbcType=DATE}
+        <if test="startTime != null and endTime != null">
+            AND start_time &gt;= #{startTime,jdbcType=VARCHAR}
+            AND end_time &lt;= #{endTime,jdbcType=VARCHAR}
+        </if>
+    </update>
+
+    <!-- 删除时间表记录 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM venue_schedule
+        WHERE id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <!-- 删除历史数据 -->
+    <delete id="deleteByDateBefore">
+        DELETE FROM venue_schedule
+        WHERE schedule_date &lt; #{date,jdbcType=DATE}
+    </delete>
+
+    <!-- 删除指定日期之前的记录 -->
+    <delete id="deleteBeforeDate">
+        DELETE FROM venue_schedule
+        WHERE schedule_date &lt; #{date,jdbcType=DATE}
+    </delete>
+
+    <!-- 删除指定日期的数据 -->
+    <delete id="deleteByDate">
+        DELETE FROM venue_schedule
+        WHERE schedule_date = #{date,jdbcType=DATE}
+    </delete>
+
+    <!-- 统计记录数 -->
+    <select id="countByDate" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM venue_schedule
+        WHERE schedule_date = #{date,jdbcType=DATE}
+    </select>
+
+    <!-- 查询指定日期范围内的场地时间表 -->
+    <select id="selectByDateRange" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE schedule_date &gt;= #{startDate,jdbcType=DATE}
+        AND schedule_date &lt;= #{endDate,jdbcType=DATE}
+        <if test="venueId != null">
+            AND venue_id = #{venueId,jdbcType=INTEGER}
+        </if>
+        ORDER BY schedule_date ASC, venue_id ASC, start_time ASC
+    </select>
+
+    <!-- 根据预约订单ID查询 -->
+    <select id="selectByReservationId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM venue_schedule
+        WHERE reservation_id = #{reservationId,jdbcType=BIGINT}
+        ORDER BY schedule_date ASC, venue_id ASC, start_time ASC
+    </select>
+
+</mapper> 

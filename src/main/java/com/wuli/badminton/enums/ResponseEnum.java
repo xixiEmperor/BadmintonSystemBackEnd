@@ -143,7 +143,88 @@ public enum ResponseEnum {
     /**
      * 订单创建失败
      */
-    ORDER_CREATE_ERROR(10040, "订单创建失败");
+    ORDER_CREATE_ERROR(10040, "订单创建失败"),
+    
+    // 场地预约相关错误码 (20000-20999)
+    /**
+     * 场地不存在
+     */
+    VENUE_NOT_EXIST(20001, "场地不存在"),
+    
+    /**
+     * 场地已被预约
+     */
+    VENUE_ALREADY_BOOKED(20002, "该时段已被预约"),
+    
+    /**
+     * 场地维护中
+     */
+    VENUE_UNDER_MAINTENANCE(20003, "场地维护中，暂不可预约"),
+    
+    /**
+     * 预约时间无效
+     */
+    INVALID_RESERVATION_TIME(20004, "预约时间无效"),
+    
+    /**
+     * 预约时间已过
+     */
+    RESERVATION_TIME_PASSED(20005, "预约时间已过"),
+    
+    /**
+     * 不在可预约时间范围内
+     */
+    NOT_IN_BOOKABLE_TIME(20006, "不在可预约时间范围内"),
+    
+    /**
+     * 用户已有待支付订单
+     */
+    USER_HAS_PENDING_ORDER(20007, "您有待支付的预约订单，请先处理"),
+    
+    /**
+     * 预约订单不存在
+     */
+    RESERVATION_NOT_EXIST(20008, "预约订单不存在"),
+    
+    /**
+     * 预约时段冲突
+     */
+    RESERVATION_TIME_CONFLICT(20009, "预约时段冲突"),
+    
+    /**
+     * 退款时间限制
+     */
+    REFUND_TIME_LIMIT(20010, "距离开场不足30分钟，无法退款"),
+    
+    /**
+     * 退款次数限制
+     */
+    REFUND_COUNT_LIMIT(20011, "当日退款次数已达上限"),
+    
+    /**
+     * 特殊日期配置不存在
+     */
+    SPECIAL_DATE_CONFIG_NOT_EXIST(20012, "特殊日期配置不存在"),
+    
+    /**
+     * 场地状态更新成功
+     */
+    VENUE_STATUS_UPDATE_SUCCESS(0, "场地状态更新成功"),
+    
+    /**
+     * 预约创建成功
+     */
+    RESERVATION_CREATE_SUCCESS(0, "预约创建成功"),
+    
+    /**
+     * 预约支付成功
+     */
+    RESERVATION_PAY_SUCCESS(0, "预约支付成功"),
+    
+    /**
+     * 退款申请成功
+     */
+    REFUND_REQUEST_SUCCESS(0, "退款申请提交成功");
     
     /**
      * 状态码

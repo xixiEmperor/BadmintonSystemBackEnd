@@ -22,6 +22,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 
+// 🟢 公开接口（游客可访问）    ←→ 🔴 管理接口（需要admin权限）
+// ┌─────────────────────┐      ┌─────────────────────┐
+// │ GET /venue/list     │      │ POST /venue/add     │
+// │ GET /venue/{id}     │      │ PUT  /venue/update  │
+// │ GET /venue/schedule │      │ PUT  /venue/status  │
+// └─────────────────────┘      │ DELETE /venue/delete│
+//          ↓                   └─────────────────────┘
+//    加入permitAll()                保持认证要求
+//     (游客访问)                    (管理员权限)
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -51,8 +60,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/static/**",
                 "/api/auth/login",
                 "/api/auth/register",
-                    "/uploads/avatars/**",
-                    "/pay/notify/**"
+                "/uploads/avatars/**",
+                "/pay/notify/**",
+                "/api/venue/list",
+                "/api/venue/list/status/*",
+                "/api/venue/*/",
+                "/api/venue/schedule/matrix",
+                "/api/venue/schedule/list",
+                "/api/venue/schedule/check"
             ).permitAll()
             .anyRequest().authenticated()
             .and()

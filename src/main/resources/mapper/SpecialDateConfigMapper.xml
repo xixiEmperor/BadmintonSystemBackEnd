@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.SpecialDateConfigMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.SpecialDateConfig">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="config_name" property="configName" jdbcType="VARCHAR"/>
+        <result column="special_date" property="specialDate" jdbcType="DATE"/>
+        <result column="config_type" property="configType" jdbcType="INTEGER"/>
+        <result column="affected_venue_ids" property="affectedVenueIds" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="VARCHAR"/>
+        <result column="end_time" property="endTime" jdbcType="VARCHAR"/>
+        <result column="venue_status" property="venueStatus" jdbcType="INTEGER"/>
+        <result column="bookable" property="bookable" jdbcType="INTEGER"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="enabled" property="enabled" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, config_name, special_date, config_type, affected_venue_ids, start_time, end_time,
+        venue_status, bookable, description, enabled, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>   
+
+    <!-- 查询所有配置 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        ORDER BY special_date DESC, id DESC
+    </select>
+
+    <!-- 根据日期查询启用的配置 -->
+    <select id="selectByDateAndEnabled" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE special_date = #{specialDate,jdbcType=DATE}
+        AND enabled = 1
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据日期范围查询启用的配置 -->
+    <select id="selectByDateRangeAndEnabled" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE special_date BETWEEN #{startDate,jdbcType=DATE} AND #{endDate,jdbcType=DATE}
+        AND enabled = 1
+        ORDER BY special_date ASC, id ASC
+    </select>
+
+    <!-- 根据配置类型查询 -->
+    <select id="selectByConfigType" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE config_type = #{configType,jdbcType=INTEGER}
+        ORDER BY special_date DESC, id DESC
+    </select>
+
+    <!-- 插入配置 -->
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.SpecialDateConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO special_date_config (config_name, special_date, config_type, affected_venue_ids,
+                                        start_time, end_time, venue_status, bookable, description,
+                                        enabled, create_time, update_time)
+        VALUES (#{configName,jdbcType=VARCHAR}, #{specialDate,jdbcType=DATE}, #{configType,jdbcType=INTEGER},
+                #{affectedVenueIds,jdbcType=VARCHAR}, #{startTime,jdbcType=VARCHAR}, #{endTime,jdbcType=VARCHAR},
+                #{venueStatus,jdbcType=INTEGER}, #{bookable,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR},
+                #{enabled,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP})
+    </insert>
+
+    <!-- 更新配置 -->
+    <update id="updateById" parameterType="com.wuli.badminton.pojo.SpecialDateConfig">
+        UPDATE special_date_config
+        SET config_name = #{configName,jdbcType=VARCHAR},
+            special_date = #{specialDate,jdbcType=DATE},
+            config_type = #{configType,jdbcType=INTEGER},
+            affected_venue_ids = #{affectedVenueIds,jdbcType=VARCHAR},
+            start_time = #{startTime,jdbcType=VARCHAR},
+            end_time = #{endTime,jdbcType=VARCHAR},
+            venue_status = #{venueStatus,jdbcType=INTEGER},
+            bookable = #{bookable,jdbcType=INTEGER},
+            description = #{description,jdbcType=VARCHAR},
+            enabled = #{enabled,jdbcType=INTEGER},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新启用状态 -->
+    <update id="updateEnabled">
+        UPDATE special_date_config
+        SET enabled = #{enabled,jdbcType=INTEGER},
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 删除配置 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM special_date_config
+        WHERE id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <!-- 删除过期配置 -->
+    <delete id="deleteByDateBefore">
+        DELETE FROM special_date_config
+        WHERE special_date &lt; #{date,jdbcType=DATE}
+    </delete>
+
+    <!-- 统计配置数量 -->
+    <select id="countAll" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM special_date_config
+    </select>
+
+    <!-- 根据启用状态统计 -->
+    <select id="countByEnabled" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM special_date_config WHERE enabled = #{enabled,jdbcType=INTEGER}
+    </select>
+
+</mapper> 
