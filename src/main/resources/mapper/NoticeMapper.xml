@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.wuli.badminton.dao.NoticeMapper">
+    
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.Notice">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="title" jdbcType="VARCHAR" property="title"/>
+        <result column="content" jdbcType="LONGVARCHAR" property="content"/>
+        <result column="type" jdbcType="INTEGER" property="type"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+        <result column="publish_time" jdbcType="TIMESTAMP" property="publishTime"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, title, content, type, status, create_time, update_time, publish_time
+    </sql>
+    
+    <!-- 插入通知 -->
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.Notice" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notice (
+            title, content, type, status, create_time, update_time
+        )
+        VALUES (
+            #{title}, #{content}, #{type}, #{status}, #{createTime}, #{updateTime}
+        )
+    </insert>
+    
+    <!-- 根据ID查询通知 -->
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 查询所有已发布的通知（按发布时间倒序） -->
+    <select id="selectPublishedNotices" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice
+        WHERE status = 1
+        ORDER BY publish_time DESC, create_time DESC
+    </select>
+    
+    <!-- 查询所有通知（管理员用，包含草稿） -->
+    <select id="selectAllNotices" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice
+        ORDER BY create_time DESC
+    </select>
+    
+    <!-- 根据类型查询已发布的通知 -->
+    <select id="selectPublishedNoticesByType" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice
+        WHERE status = 1 AND type = #{type}
+        ORDER BY publish_time DESC, create_time DESC
+    </select>
+    
+    <!-- 更新通知 -->
+    <update id="updateById" parameterType="com.wuli.badminton.pojo.Notice">
+        UPDATE notice
+        SET title = #{title},
+            content = #{content},
+            type = #{type},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 发布通知（更新状态和发布时间） -->
+    <update id="publishNotice">
+        UPDATE notice
+        SET status = 1,
+            publish_time = #{publishTime},
+            update_time = #{publishTime}
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 删除通知 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM notice
+        WHERE id = #{id}
+    </delete>
+    
+</mapper> 
