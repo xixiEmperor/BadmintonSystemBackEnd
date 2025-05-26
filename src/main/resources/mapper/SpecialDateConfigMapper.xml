@@ -41,6 +41,33 @@
         ORDER BY special_date DESC, id DESC
     </select>
 
+    <!-- 根据日期查询配置（新增） -->
+    <select id="selectByDate" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE special_date = #{specialDate,jdbcType=DATE}
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据日期范围查询配置（新增） -->
+    <select id="selectByDateRange" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE special_date BETWEEN #{startDate,jdbcType=DATE} AND #{endDate,jdbcType=DATE}
+        ORDER BY special_date ASC, id ASC
+    </select>
+
+    <!-- 查询启用的特殊日期配置（新增） -->
+    <select id="selectEnabledConfigs" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM special_date_config
+        WHERE enabled = 1
+        ORDER BY special_date ASC, id ASC
+    </select>
+
     <!-- 根据日期查询启用的配置 -->
     <select id="selectByDateAndEnabled" resultMap="BaseResultMap">
         SELECT
@@ -99,7 +126,7 @@
     </update>
 
     <!-- 更新启用状态 -->
-    <update id="updateEnabled">
+    <update id="updateEnabledStatus">
         UPDATE special_date_config
         SET enabled = #{enabled,jdbcType=INTEGER},
             update_time = NOW()

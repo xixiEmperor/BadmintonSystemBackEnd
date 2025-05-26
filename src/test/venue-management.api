@@ -1,0 +1,100 @@
+### 羽毛球场地管理系统 - 管理员场地管理接口测试
+
+## 前置条件
+# 需要先获取管理员JWT Token
+# 请先调用登录接口获取管理员token，然后替换下面的{{admin_token}}
+
+## 1. 管理员添加场地
+
+### 1.1 添加标准羽毛球场
+POST http://localhost:8080/api/venue/add
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "羽毛球场5号",
+  "description": "新增的标准羽毛球场地，配备专业羽毛球网和LED照明设备",
+  "location": "体育馆5号场地",
+  "pricePerHour": 35.00,
+  "type": 1,
+  "status": 1
+}
+
+### 1.2 添加高端羽毛球场
+POST http://localhost:8080/api/venue/add
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "羽毛球场VIP1号",
+  "description": "VIP羽毛球场地，配备空调、专业地胶、高端照明设备",
+  "location": "体育馆VIP区1号场地",
+  "pricePerHour": 50.00,
+  "type": 1,
+  "status": 1
+}
+
+### 1.3 添加经济型羽毛球场
+POST http://localhost:8080/api/venue/add
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "羽毛球场经济6号",
+  "description": "经济型羽毛球场地，基础设施完善",
+  "location": "体育馆6号场地",
+  "pricePerHour": 25.00,
+  "type": 1,
+  "status": 1
+}
+
+### 1.4 添加维护中的场地
+POST http://localhost:8080/api/venue/add
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "羽毛球场7号",
+  "description": "新建场地，正在进行设备调试",
+  "location": "体育馆7号场地",
+  "pricePerHour": 30.00,
+  "type": 1,
+  "status": 0
+}
+
+### 1.5 批量添加场地
+
+#### 1.5.1 批量添加A区场地（成功案例）
+POST http://localhost:8080/api/venue/add/batch
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "venues": [
+    {
+      "name": "羽毛球场A1",
+      "description": "A区1号场地，标准配置",
+      "location": "体育馆A区1号",
+      "pricePerHour": 30.00,
+      "type": 1,
+      "status": 1
+    },
+    {
+      "name": "羽毛球场A2",
+      "description": "A区2号场地，标准配置",
+      "location": "体育馆A区2号",
+      "pricePerHour": 30.00,
+      "type": 1,
+      "status": 1
+    },
+    {
+      "name": "羽毛球场A3",
+      "description": "A区3号场地，标准配置",
+      "location": "体育馆A区3号",
+      "pricePerHour": 30.00,
+      "type": 1,
+      "status": 1
+    },
+    {
+      "name": "羽毛球场A4",
+      "description": "A区4号场地，标准配置",

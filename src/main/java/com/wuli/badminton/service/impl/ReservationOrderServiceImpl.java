@@ -69,8 +69,47 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             
             // 3. 验证预约时间
             Date reservationDate = dateFormat.parse(dto.getReservationDate());
-            if (reservationDate.before(new Date())) {
-                return ResponseVo.error(ResponseEnum.INVALID_RESERVATION_TIME);
+            Date today = new Date();
+            
+            // 计算今天的日期（去掉时间部分）
+            Calendar todayCal = Calendar.getInstance();
+            todayCal.setTime(today);
+            todayCal.set(Calendar.HOUR_OF_DAY, 0);
+            todayCal.set(Calendar.MINUTE, 0);
+            todayCal.set(Calendar.SECOND, 0);
+            todayCal.set(Calendar.MILLISECOND, 0);
+            Date todayDate = todayCal.getTime();
+            
+            // 计算明天的日期
+            Calendar tomorrowCal = Calendar.getInstance();
+            tomorrowCal.setTime(todayDate);
+            tomorrowCal.add(Calendar.DAY_OF_MONTH, 1);
+            Date tomorrowDate = tomorrowCal.getTime();
+            
+            // 只允许预约今天和明天的场地
+            if (reservationDate.before(todayDate)) {
+                return ResponseVo.error(ResponseEnum.INVALID_RESERVATION_TIME, "不能预约过去的日期");
+            }
+            
+            // 如果预约的是今天，需要检查时间是否已过
+            if (reservationDate.equals(todayDate)) {
+                LocalTime currentTime = LocalTime.now();
+                LocalTime reservationStartTime = LocalTime.parse(dto.getStartTime(), DateTimeFormatter.ofPattern("HH:mm"));
+                
+                // 如果预约时间已过，不允许预约
+                if (reservationStartTime.isBefore(currentTime.plusMinutes(30))) { // 至少提前30分钟预约
+                    return ResponseVo.error(ResponseEnum.INVALID_RESERVATION_TIME, "预约时间已过或距离开始时间不足30分钟");
+                }
+            }
+            
+            // 不允许预约后天及以后的日期（可根据业务需求调整）
+            Calendar dayAfterTomorrowCal = Calendar.getInstance();
+            dayAfterTomorrowCal.setTime(tomorrowDate);
+            dayAfterTomorrowCal.add(Calendar.DAY_OF_MONTH, 1);
+            Date dayAfterTomorrowDate = dayAfterTomorrowCal.getTime();
+            
+            if (reservationDate.compareTo(dayAfterTomorrowDate) >= 0) {
+                return ResponseVo.error(ResponseEnum.INVALID_RESERVATION_TIME, "只能预约今天和明天的场地");
             }
             
             // 4. 验证时间段格式并计算时长
