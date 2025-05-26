@@ -65,9 +65,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/api/venue/list",
                 "/api/venue/list/status/*",
                 "/api/venue/*/",
-                "/api/venue/schedule/matrix",
-                "/api/venue/schedule/list",
-                "/api/venue/schedule/check"
+                "/api/reservations/availability",
+                "/api/reservations/venue/*",
+                "/api/reservations/payment/callback"
             ).permitAll()
             .anyRequest().authenticated()
             .and()

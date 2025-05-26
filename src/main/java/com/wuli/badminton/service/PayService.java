@@ -15,10 +15,10 @@ public interface PayService {
     
     /**
      * 查询支付状态
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @return 支付状态
      */
-    boolean checkPayStatus(Long orderNo);
+    boolean checkPayStatus(String orderNo);
     
     /**
      * 创建支付（底层方法）
@@ -39,24 +39,24 @@ public interface PayService {
     
     /**
      * 创建支付记录
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @param amount 金额
      * @param businessType 业务类型
      * @return 支付结果
      */
-    PayResponse createPay(Long orderNo, BigDecimal amount, String businessType);
+    PayResponse createPay(String orderNo, BigDecimal amount, String businessType);
     
     /**
      * 根据订单号查询支付信息
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @return 支付信息
      */
-    PayInfo queryByOrderId(Long orderNo);
+    PayInfo queryByOrderId(String orderNo);
     
     /**
      * 获取前端支付成功跳转地址
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @return 跳转地址
      */
-    String getReturnUrl(Long orderNo);
+    String getReturnUrl(String orderNo);
 } 

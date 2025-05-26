@@ -16,9 +16,9 @@ public class PayInfo {
     private Integer id;
     
     /**
-     * 订单号
+     * 订单号（支持多种格式：数字/字符串）
      */
-    private Long orderNo;
+    private String orderNo;
     
     /**
      * 支付平台:1-支付宝,2-微信

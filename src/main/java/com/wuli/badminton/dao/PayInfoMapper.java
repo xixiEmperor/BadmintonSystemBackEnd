@@ -18,7 +18,7 @@ public interface PayInfoMapper {
     /**
      * 根据订单号查询支付信息
      */
-    PayInfo selectByOrderNo(Long orderNo);
+    PayInfo selectByOrderNo(String orderNo);
     
     /**
      * 根据支付平台流水号查询支付信息
@@ -33,7 +33,7 @@ public interface PayInfoMapper {
     /**
      * 更新支付状态（按字段更新）
      */
-    int updateStatusByOrderNo(@Param("orderNo") Long orderNo, 
+    int updateStatusByOrderNo(@Param("orderNo") String orderNo, 
                              @Param("status") Integer status,
                              @Param("platformNumber") String platformNumber,
                              @Param("platformStatus") String platformStatus);

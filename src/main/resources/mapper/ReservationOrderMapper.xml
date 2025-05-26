@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.ReservationOrderMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.ReservationOrder">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="venue_id" property="venueId" jdbcType="INTEGER"/>
+        <result column="venue_name" property="venueName" jdbcType="VARCHAR"/>
+        <result column="reservation_date" property="reservationDate" jdbcType="DATE"/>
+        <result column="start_time" property="startTime" jdbcType="VARCHAR"/>
+        <result column="end_time" property="endTime" jdbcType="VARCHAR"/>
+        <result column="duration" property="duration" jdbcType="INTEGER"/>
+        <result column="price_per_hour" property="pricePerHour" jdbcType="DECIMAL"/>
+        <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="pay_info_id" property="payInfoId" jdbcType="BIGINT"/>
+        <result column="pay_type" property="payType" jdbcType="INTEGER"/>
+        <result column="pay_time" property="payTime" jdbcType="TIMESTAMP"/>
+        <result column="refund_amount" property="refundAmount" jdbcType="DECIMAL"/>
+        <result column="refund_time" property="refundTime" jdbcType="TIMESTAMP"/>
+        <result column="cancel_reason" property="cancelReason" jdbcType="VARCHAR"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, order_no, user_id, username, venue_id, venue_name, reservation_date, 
+        start_time, end_time, duration, price_per_hour, total_amount, status, 
+        pay_info_id, pay_type, pay_time, refund_amount, refund_time, 
+        cancel_reason, remark, create_time, update_time
+    </sql>
+
+    <!-- 插入预约订单 -->
+    <insert id="insert" parameterType="com.wuli.badminton.pojo.ReservationOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reservation_order (
+            order_no, user_id, username, venue_id, venue_name, reservation_date,
+            start_time, end_time, duration, price_per_hour, total_amount, status,
+            pay_type, remark, create_time, update_time
+        ) VALUES (
+            #{orderNo,jdbcType=VARCHAR}, #{userId,jdbcType=INTEGER}, #{username,jdbcType=VARCHAR},
+            #{venueId,jdbcType=INTEGER}, #{venueName,jdbcType=VARCHAR}, #{reservationDate,jdbcType=DATE},
+            #{startTime,jdbcType=VARCHAR}, #{endTime,jdbcType=VARCHAR}, #{duration,jdbcType=INTEGER},
+            #{pricePerHour,jdbcType=DECIMAL}, #{totalAmount,jdbcType=DECIMAL}, #{status,jdbcType=INTEGER},
+            #{payType,jdbcType=INTEGER}, #{remark,jdbcType=VARCHAR},
+            #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}
+        )
+    </insert>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <!-- 根据订单号查询 -->
+    <select id="selectByOrderNo" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE order_no = #{orderNo,jdbcType=VARCHAR}
+    </select>
+
+    <!-- 根据条件查询订单列表 -->
+    <select id="selectByCondition" parameterType="com.wuli.badminton.dto.ReservationOrderQueryDto" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId,jdbcType=INTEGER}
+            </if>
+            <if test="venueId != null">
+                AND venue_id = #{venueId,jdbcType=INTEGER}
+            </if>
+            <if test="status != null">
+                AND status = #{status,jdbcType=INTEGER}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND reservation_date &gt;= #{startDate,jdbcType=DATE}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND reservation_date &lt;= #{endDate,jdbcType=DATE}
+            </if>
+            <if test="payType != null">
+                AND pay_type = #{payType,jdbcType=INTEGER}
+            </if>
+            <if test="orderNo != null and orderNo != ''">
+                AND order_no LIKE CONCAT('%', #{orderNo,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username,jdbcType=VARCHAR}, '%')
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        <if test="page != null and size != null">
+            LIMIT #{size} OFFSET #{page}
+        </if>
+    </select>
+
+    <!-- 统计订单数量 -->
+    <select id="countByCondition" parameterType="com.wuli.badminton.dto.ReservationOrderQueryDto" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM reservation_order
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId,jdbcType=INTEGER}
+            </if>
+            <if test="venueId != null">
+                AND venue_id = #{venueId,jdbcType=INTEGER}
+            </if>
+            <if test="status != null">
+                AND status = #{status,jdbcType=INTEGER}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND reservation_date &gt;= #{startDate,jdbcType=DATE}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND reservation_date &lt;= #{endDate,jdbcType=DATE}
+            </if>
+            <if test="payType != null">
+                AND pay_type = #{payType,jdbcType=INTEGER}
+            </if>
+            <if test="orderNo != null and orderNo != ''">
+                AND order_no LIKE CONCAT('%', #{orderNo,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username,jdbcType=VARCHAR}, '%')
+            </if>
+        </where>
+    </select>
+
+    <!-- 更新订单 -->
+    <update id="updateById" parameterType="com.wuli.badminton.pojo.ReservationOrder">
+        UPDATE reservation_order
+        SET user_id = #{userId,jdbcType=INTEGER},
+            username = #{username,jdbcType=VARCHAR},
+            venue_id = #{venueId,jdbcType=INTEGER},
+            venue_name = #{venueName,jdbcType=VARCHAR},
+            reservation_date = #{reservationDate,jdbcType=DATE},
+            start_time = #{startTime,jdbcType=VARCHAR},
+            end_time = #{endTime,jdbcType=VARCHAR},
+            duration = #{duration,jdbcType=INTEGER},
+            price_per_hour = #{pricePerHour,jdbcType=DECIMAL},
+            total_amount = #{totalAmount,jdbcType=DECIMAL},
+            status = #{status,jdbcType=INTEGER},
+            pay_info_id = #{payInfoId,jdbcType=BIGINT},
+            pay_type = #{payType,jdbcType=INTEGER},
+            pay_time = #{payTime,jdbcType=TIMESTAMP},
+            refund_amount = #{refundAmount,jdbcType=DECIMAL},
+            refund_time = #{refundTime,jdbcType=TIMESTAMP},
+            cancel_reason = #{cancelReason,jdbcType=VARCHAR},
+            remark = #{remark,jdbcType=VARCHAR},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新订单状态 -->
+    <update id="updateStatus">
+        UPDATE reservation_order
+        SET status = #{status,jdbcType=INTEGER},
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新支付信息 -->
+    <update id="updatePayInfo">
+        UPDATE reservation_order
+        SET pay_info_id = #{payInfoId,jdbcType=BIGINT},
+            pay_type = #{payType,jdbcType=INTEGER},
+            pay_time = #{payTime,jdbcType=TIMESTAMP},
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 更新退款信息 -->
+    <update id="updateRefundInfo">
+        UPDATE reservation_order
+        SET refund_amount = #{refundAmount,jdbcType=DECIMAL},
+            refund_time = #{refundTime,jdbcType=TIMESTAMP},
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 查询场地在指定时间段的冲突订单 -->
+    <select id="selectConflictOrders" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE venue_id = #{venueId,jdbcType=INTEGER}
+        AND reservation_date = #{reservationDate,jdbcType=DATE}
+        AND status IN (2, 3) -- 已支付、已完成
+        AND NOT (
+            end_time &lt;= #{startTime,jdbcType=VARCHAR} 
+            OR start_time &gt;= #{endTime,jdbcType=VARCHAR}
+        )
+    </select>
+
+    <!-- 查询用户的订单列表 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE user_id = #{userId,jdbcType=INTEGER}
+        <if test="status != null">
+            AND status = #{status,jdbcType=INTEGER}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询场地的预约记录 -->
+    <select id="selectByVenueAndDate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE venue_id = #{venueId,jdbcType=INTEGER}
+        AND reservation_date = #{reservationDate,jdbcType=DATE}
+        AND status IN (1, 2, 3) -- 待支付、已支付、已完成
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 查询指定日期范围的订单 -->
+    <select id="selectByDateRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reservation_order
+        WHERE reservation_date &gt;= #{startDate,jdbcType=DATE}
+        AND reservation_date &lt;= #{endDate,jdbcType=DATE}
+        <if test="status != null">
+            AND status = #{status,jdbcType=INTEGER}
+        </if>
+        ORDER BY reservation_date ASC, start_time ASC
+    </select>
+
+    <!-- 删除订单（逻辑删除，实际更新状态） -->
+    <delete id="deleteById">
+        UPDATE reservation_order
+        SET status = 4, -- 已取消
+            update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </delete>
+
+</mapper> 

@@ -43,11 +43,11 @@ public class PayController {
     
     /**
      * 查询支付状态
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @return 支付信息
      */
     @GetMapping("/query")
-    public ResponseVo<PayInfo> queryPayStatus(@RequestParam("orderNo") Long orderNo) {
+    public ResponseVo<PayInfo> queryPayStatus(@RequestParam("orderNo") String orderNo) {
         PayInfo payInfo = payService.queryByOrderId(orderNo);
         if (payInfo == null) {
             return ResponseVo.error(ResponseEnum.ORDER_NOT_EXIST);
@@ -57,11 +57,11 @@ public class PayController {
     
     /**
      * 获取支付成功后的跳转地址
-     * @param orderNo 订单号
+     * @param orderNo 订单号（支持数字和字符串格式）
      * @return 跳转地址
      */
     @GetMapping("/return_url")
-    public ResponseVo<String> getReturnUrl(@RequestParam("orderNo") Long orderNo) {
+    public ResponseVo<String> getReturnUrl(@RequestParam("orderNo") String orderNo) {
         String returnUrl = payService.getReturnUrl(orderNo);
         return ResponseVo.success(returnUrl);
     }

@@ -2,8 +2,13 @@ package com.wuli.badminton.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wuli.badminton.config.RabbitMQConfig;
+import com.wuli.badminton.enums.ReservationStatusEnum;
 import com.wuli.badminton.pojo.MallOrder;
+import com.wuli.badminton.pojo.ReservationOrder;
 import com.wuli.badminton.service.MallOrderService;
+import com.wuli.badminton.service.ReservationOrderService;
+import com.wuli.badminton.vo.ReservationOrderVo;
+import com.wuli.badminton.vo.ResponseVo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -14,7 +19,7 @@ import java.util.Map;
 
 /**
  * 订单取消监听器
- * 处理延迟队列中的超时订单
+ * 处理延迟队列中的超时订单，支持商城订单和预约订单
  */
 @Component
 public class OrderCancelListener {
@@ -23,6 +28,9 @@ public class OrderCancelListener {
     
     @Autowired
     private MallOrderService mallOrderService;
+    
+    @Autowired
+    private ReservationOrderService reservationOrderService;
     
     @Autowired
     private ObjectMapper objectMapper;
@@ -36,37 +44,125 @@ public class OrderCancelListener {
         logger.info("【订单超时关单】收到取消消息: message={}", message);
         
         try {
-            Long orderNo = parseOrderNo(message);
-            if (orderNo == null) {
-                logger.error("【订单超时关单】无法解析订单号: message={}", message);
-                return;
-            }
-            
-            // 查询订单状态
-            MallOrder order = mallOrderService.selectByOrderNo(orderNo);
-            if (order == null) {
-                logger.warn("【订单超时关单】订单不存在: orderNo={}", orderNo);
-                return;
-            }
-            
-            // 检查订单状态，只有未支付的订单才需要取消
-            if (order.getStatus().equals(MallOrder.STATUS_UNPAID)) {
-                logger.info("【订单超时关单】开始取消订单: orderNo={}, 当前状态={}", orderNo, order.getStatus());
+            // 尝试解析为包含业务类型的JSON消息
+            Map<String, Object> messageData = parseMessage(message);
+            if (messageData != null) {
+                String businessType = (String) messageData.get("businessType");
+                String orderNo = String.valueOf(messageData.get("orderNo"));
                 
-                // 取消订单（cancelOrder方法会自动检测是否为系统调用）
-                boolean success = mallOrderService.cancelOrder(orderNo);
-                if (success) {
-                    logger.info("【订单超时关单】订单取消成功: orderNo={}", orderNo);
+                logger.info("【订单超时关单】解析消息成功: businessType={}, orderNo={}", businessType, orderNo);
+                
+                if ("MALL".equals(businessType)) {
+                    processMallOrderCancel(Long.parseLong(orderNo));
+                } else if ("RESERVATION".equals(businessType)) {
+                    processReservationOrderCancel(orderNo);
                 } else {
-                    logger.error("【订单超时关单】订单取消失败: orderNo={}", orderNo);
+                    logger.warn("【订单超时关单】未知的业务类型: businessType={}, orderNo={}", businessType, orderNo);
                 }
             } else {
-                logger.info("【订单超时关单】订单无需取消: orderNo={}, 当前状态={}", orderNo, order.getStatus());
+                // 兼容旧格式：纯订单号（默认为商城订单）
+                Long orderNo = parseOrderNo(message);
+                if (orderNo != null) {
+                    logger.info("【订单超时关单】使用兼容模式处理商城订单: orderNo={}", orderNo);
+                    processMallOrderCancel(orderNo);
+                }
             }
             
         } catch (Exception e) {
             logger.error("【订单超时关单】处理异常: message={}, error={}", message, e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 处理商城订单超时取消
+     */
+    private void processMallOrderCancel(Long orderNo) {
+        try {
+            // 查询订单状态
+            MallOrder order = mallOrderService.selectByOrderNo(orderNo);
+            if (order == null) {
+                logger.warn("【商城订单超时关单】订单不存在: orderNo={}", orderNo);
+                return;
+            }
+            
+            // 检查订单状态，只有未支付的订单才需要取消
+            if (order.getStatus().equals(MallOrder.STATUS_UNPAID)) {
+                logger.info("【商城订单超时关单】开始取消订单: orderNo={}, 当前状态={}", orderNo, order.getStatus());
+                
+                // 取消订单（cancelOrder方法会自动检测是否为系统调用）
+                boolean success = mallOrderService.cancelOrder(orderNo);
+                if (success) {
+                    logger.info("【商城订单超时关单】订单取消成功: orderNo={}", orderNo);
+                } else {
+                    logger.error("【商城订单超时关单】订单取消失败: orderNo={}", orderNo);
+                }
+            } else {
+                logger.info("【商城订单超时关单】订单无需取消: orderNo={}, 当前状态={}", orderNo, order.getStatus());
+            }
+        } catch (Exception e) {
+            logger.error("【商城订单超时关单】处理异常: orderNo={}, error={}", orderNo, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 处理预约订单超时取消
+     */
+    private void processReservationOrderCancel(String orderNo) {
+        try {
+            // 查询预约订单
+            ResponseVo<ReservationOrderVo> orderResponse = reservationOrderService.getOrderByNo(orderNo);
+            if (orderResponse.getCode() != 0 || orderResponse.getData() == null) {
+                logger.warn("【预约订单超时关单】订单不存在: orderNo={}", orderNo);
+                return;
+            }
+            
+            ReservationOrderVo orderVo = orderResponse.getData();
+            Integer currentStatus = orderVo.getStatus();
+            
+            // 检查订单状态，只有待支付的订单才需要取消
+            if (ReservationStatusEnum.PENDING_PAYMENT.getCode().equals(currentStatus)) {
+                logger.info("【预约订单超时关单】开始取消订单: orderNo={}, 当前状态={}", orderNo, currentStatus);
+                
+                // 取消预约订单（这里模拟系统调用，使用订单中的用户ID）
+                ResponseVo<String> cancelResponse = reservationOrderService.cancelOrder(orderVo.getUserId(), orderVo.getId(), "系统超时自动取消");
+                if (cancelResponse.getCode() == 0) {
+                    logger.info("【预约订单超时关单】订单取消成功: orderNo={}", orderNo);
+                } else {
+                    logger.error("【预约订单超时关单】订单取消失败: orderNo={}, reason={}", orderNo, cancelResponse.getMsg());
+                }
+            } else {
+                logger.info("【预约订单超时关单】订单无需取消: orderNo={}, 当前状态={}", orderNo, currentStatus);
+            }
+        } catch (Exception e) {
+            logger.error("【预约订单超时关单】处理异常: orderNo={}, error={}", orderNo, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 解析消息为Map格式
+     */
+    private Map<String, Object> parseMessage(String message) {
+        if (message == null || message.trim().isEmpty()) {
+            return null;
+        }
+        
+        message = message.trim();
+        
+        // 尝试JSON格式解析
+        if (message.startsWith("{") && message.endsWith("}")) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> messageMap = objectMapper.readValue(message, Map.class);
+                // 验证必要字段
+                if (messageMap.containsKey("businessType") && messageMap.containsKey("orderNo")) {
+                    return messageMap;
+                }
+            } catch (Exception e) {
+                logger.debug("【订单超时关单】JSON解析失败: message={}, error={}", message, e.getMessage());
+            }
+        }
+        
+        return null;
     }
     
     /**

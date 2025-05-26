@@ -7,13 +7,14 @@ import com.wuli.badminton.dto.SpecialDateConfigDto;
 import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.SpecialDateConfig;
 import com.wuli.badminton.service.SpecialDateConfigService;
-import com.wuli.badminton.util.VenueScheduleUtil;
 import com.wuli.badminton.vo.ResponseVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -27,6 +28,8 @@ public class SpecialDateConfigServiceImpl implements SpecialDateConfigService {
     @Autowired
     private SpecialDateConfigMapper specialDateConfigMapper;
     
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    
     @Override
     public ResponseVo<String> createSpecialDateConfig(SpecialDateConfigDto configDto) {
         log.info("【创建特殊日期配置】配置: {}", configDto);
@@ -36,7 +39,7 @@ public class SpecialDateConfigServiceImpl implements SpecialDateConfigService {
         BeanUtils.copyProperties(configDto, config);
         
         // 解析日期
-        Date specialDate = VenueScheduleUtil.parseDate(configDto.getSpecialDate());
+        Date specialDate = parseDate(configDto.getSpecialDate());
         if (specialDate == null) {
             return ResponseVo.error(ResponseEnum.PARAM_ERROR, "特殊日期格式错误");
         }
@@ -98,7 +101,7 @@ public class SpecialDateConfigServiceImpl implements SpecialDateConfigService {
         existingConfig.setId(id);
         
         // 解析日期
-        Date specialDate = VenueScheduleUtil.parseDate(configDto.getSpecialDate());
+        Date specialDate = parseDate(configDto.getSpecialDate());
         if (specialDate == null) {
             return ResponseVo.error(ResponseEnum.PARAM_ERROR, "特殊日期格式错误");
         }
@@ -163,7 +166,7 @@ public class SpecialDateConfigServiceImpl implements SpecialDateConfigService {
     public List<SpecialDateConfig> getConfigsByDate(String date) {
         log.info("【根据日期获取特殊配置】日期: {}", date);
         
-        Date specialDate = VenueScheduleUtil.parseDate(date);
+        Date specialDate = parseDate(date);
         if (specialDate == null) {
             log.warn("【根据日期获取特殊配置】日期格式错误: {}", date);
             return null;
@@ -173,5 +176,17 @@ public class SpecialDateConfigServiceImpl implements SpecialDateConfigService {
         log.info("【根据日期获取特殊配置】找到{}条配置", configs.size());
         
         return configs;
+    }
+    
+    /**
+     * 解析日期字符串
+     */
+    private Date parseDate(String dateStr) {
+        try {
+            return dateFormat.parse(dateStr);
+        } catch (ParseException e) {
+            log.error("日期解析失败: {}", dateStr, e);
+            return null;
+        }
     }
 } 

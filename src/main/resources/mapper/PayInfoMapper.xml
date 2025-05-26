@@ -3,7 +3,7 @@
 <mapper namespace="com.wuli.badminton.dao.PayInfoMapper">
     <resultMap id="BaseResultMap" type="com.wuli.badminton.pojo.PayInfo">
         <id column="id" property="id" jdbcType="INTEGER"/>
-        <result column="order_no" property="orderNo" jdbcType="BIGINT"/>
+        <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
         <result column="pay_platform" property="payPlatform" jdbcType="INTEGER"/>
         <result column="platform_number" property="platformNumber" jdbcType="VARCHAR"/>
         <result column="platform_status" property="platformStatus" jdbcType="VARCHAR"/>
@@ -30,7 +30,7 @@
         )
     </insert>
     
-    <select id="selectByOrderNo" parameterType="long" resultMap="BaseResultMap">
+    <select id="selectByOrderNo" parameterType="string" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM pay_info
         WHERE order_no = #{orderNo}

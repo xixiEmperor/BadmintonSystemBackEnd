@@ -59,7 +59,7 @@ public class PayServiceImpl implements PayService {
      * 查询支付状态
      */
     @Override
-    public boolean checkPayStatus(Long orderNo) {
+    public boolean checkPayStatus(String orderNo) {
         PayInfo payInfo = payInfoMapper.selectByOrderNo(orderNo);
         return payInfo != null && payInfo.getStatus() == 1; // 1表示已支付
     }
@@ -71,7 +71,7 @@ public class PayServiceImpl implements PayService {
     public PayResponse create(String orderId, BigDecimal amount, BestPayTypeEnum bestPayTypeEnum, String businessType) {
         // 写入数据库
         PayInfo payInfo = new PayInfo();
-        payInfo.setOrderNo(Long.parseLong(orderId));
+        payInfo.setOrderNo(orderId); // 直接使用字符串订单号
         payInfo.setPayPlatform(PayPlatFormEnum.getByBestPayTypeEnum(bestPayTypeEnum).getCode());
         payInfo.setPlatformStatus(OrderStatusEnum.NOTPAY.name());
         payInfo.setBusinessType(businessType);
@@ -105,7 +105,7 @@ public class PayServiceImpl implements PayService {
         logger.info("支付异步通知: {}", payResponse);
         
         // 2.金额校验(从数据库查订单)
-        PayInfo payInfo = payInfoMapper.selectByOrderNo(Long.parseLong(payResponse.getOrderId()));
+        PayInfo payInfo = payInfoMapper.selectByOrderNo(payResponse.getOrderId());
         if (payInfo == null) {
             // 严重错误情况，发出警报
             throw new RuntimeException("通过orderNo查询到的结果为null");
@@ -125,20 +125,33 @@ public class PayServiceImpl implements PayService {
             payInfo.setUpdateTime(new Date());
             payInfoMapper.updateByOrderNo(payInfo);
             
-            // 4.更新商城订单状态
+            // 4.根据业务类型更新订单状态
             String businessType = payInfo.getBusinessType();
             if (PayService.BUSINESS_TYPE_MALL.equals(businessType)) {
-                mallOrderService.paySuccess(payInfo.getOrderNo());
+                // 商城订单：转换为Long类型
+                Long mallOrderNo = Long.parseLong(payInfo.getOrderNo());
+                mallOrderService.paySuccess(mallOrderNo);
             } else if (PayService.BUSINESS_TYPE_RESERVATION.equals(businessType)) {
-                //TODO: 预约场地支付成功
-                // reservationService.paySuccess(payInfo.getOrderNo());
+                // 预约订单：保持字符串格式，这里不再调用具体业务，交给MQ处理
+                logger.info("【支付结果通知】预约订单支付成功，等待MQ处理: orderNo={}", payInfo.getOrderNo());
             } else {
                 logger.error("【支付结果通知】未知业务类型：{}", businessType);
             }
             
             // 5.发送MQ消息
             PayNotifyMessage message = new PayNotifyMessage();
-            message.setOrderNo(payInfo.getOrderNo());
+            // 注意：PayNotifyMessage中的orderNo字段是Long类型，需要处理
+            if (PayService.BUSINESS_TYPE_MALL.equals(businessType)) {
+                message.setOrderNo(Long.parseLong(payInfo.getOrderNo()));
+            } else if (PayService.BUSINESS_TYPE_RESERVATION.equals(businessType)) {
+                // 预约订单：去掉RO前缀转换为Long
+                String orderNoStr = payInfo.getOrderNo();
+                if (orderNoStr.startsWith("RO")) {
+                    message.setOrderNo(Long.parseLong(orderNoStr.substring(2)));
+                } else {
+                    message.setOrderNo(Long.parseLong(orderNoStr));
+                }
+            }
             message.setBusinessType(payInfo.getBusinessType());
             message.setPayPlatform(payInfo.getPayPlatform());
             message.setPlatformNumber(payInfo.getPlatformNumber());
@@ -168,18 +181,17 @@ public class PayServiceImpl implements PayService {
     /**
      * 创建支付（新接口）
      */
-
     @Override
-    public PayResponse createPay(Long orderNo, BigDecimal amount, String businessType) {
+    public PayResponse createPay(String orderNo, BigDecimal amount, String businessType) {
         //TODO: 加入支付宝
-        return create(orderNo.toString(), amount, BestPayTypeEnum.WXPAY_NATIVE, businessType);
+        return create(orderNo, amount, BestPayTypeEnum.WXPAY_NATIVE, businessType);
     }
     
     /**
      * 根据订单号查询支付信息（新接口）
      */
     @Override
-    public PayInfo queryByOrderId(Long orderNo) {
+    public PayInfo queryByOrderId(String orderNo) {
         return payInfoMapper.selectByOrderNo(orderNo);
     }
     
@@ -187,7 +199,7 @@ public class PayServiceImpl implements PayService {
      * 获取前端支付成功跳转地址（新接口）
      */
     @Override
-    public String getReturnUrl(Long orderNo) {
+    public String getReturnUrl(String orderNo) {
         return returnUrl + "?orderNo=" + orderNo;
     }
 }

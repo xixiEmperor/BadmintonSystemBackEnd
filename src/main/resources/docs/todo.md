@@ -46,7 +46,207 @@
    - 若是节假日，则设为“维护中”（根据配置）
    - 若是工作日晚上，则设为“空闲中”
 
+
+## 🎯 一、用户发起预约的完整流程（核心业务流）
+
+我们以用户预约 **“羽毛球场1号” 在 2025-04-08 的 19:00~20:00** 为例：
+
+### ✅ 用户操作步骤：
+1. 打开预约页面，选择日期：2025-04-08
+2. 查看场地矩阵图，看到羽毛球场1号在 19:00~20:00 是绿色（可预约）
+3. 点击该时间段，提交预约请求
+
 ---
+
+## 🧱 二、后端接口处理逻辑（简化说明）
+
+### 接口：`POST /reservation`
+
+```json
+{
+  "venueId": 1,
+  "date": "2025-04-08",
+  "startTime": "19:00",
+  "endTime": "20:00"
+}
+```
+
+### 后端校验逻辑：
+
+#### 1. 检查是否允许预约这个时间（权限控制）
+
+```java
+LocalDate reservationDate = LocalDate.parse("2025-04-08");
+LocalDateTime now = LocalDateTime.now();
+LocalDateTime earliestReservationTime = reservationDate.minusDays(1).atTime(18, 0);
+
+if (now.isBefore(earliestReservationTime)) {
+    throw new ForbiddenException("只能在前一天18:00后预约");
+}
+```
+
+#### 2. 获取场地状态（是否开放预约）
+
+```java
+Venue venue = venueRepository.findById(1);
+if (!"空闲中".equals(venue.getStatus())) {
+    throw new ConflictException("该场地当前不可预约");
+}
+```
+
+#### 3. 判断是否有订单冲突（时间段重叠）
+
+```sql
+SELECT * FROM ReservationOrder
+WHERE venue_id = 1
+  AND date = '2025-04-08'
+  AND NOT (end_time <= '19:00' OR start_time >= '20:00')
+```
+
+如果查询结果不为空 → 提示：“该时段已被预约”
+
+#### 4. 创建订单，并锁定场地状态为“已预约”
+
+```java
+ReservationOrder order = new ReservationOrder();
+order.setVenueId(1);
+order.setDate("2025-04-08");
+order.setStartTime("19:00");
+order.setEndTime("20:00");
+order.setStatus("待支付");
+order.setUserId(1001);
+reservationOrderRepository.save(order);
+```
+
+> 此时，前端展示的场地矩阵图中，“19:00~20:00”将变为红色（已预约）
+
+#### 5. 调用 Pay 模块发起支付
+
+```java
+PayInfo payInfo = new PayInfo();
+payInfo.setBusinessType("VENUE_RESERVATION");
+payInfo.setOrderId(order.getId());
+payInfo.setAmount(BigDecimal.valueOf(40));
+payService.createPayment(payInfo);
+```
+
+---
+
+## 🔁 三、支付完成后数据变化
+
+### 场景1️⃣：支付成功
+
+```java
+order.setStatus("已支付");
+reservationOrderRepository.save(order);
+```
+
+- 场地状态仍为“已预约”
+- 用户需到场联系前台确认使用
+
+### 场景2️⃣：超时未支付或用户取消
+
+```java
+order.setStatus("已取消");
+reservationOrderRepository.save(order);
+```
+
+- 删除订单或更新状态
+- 场地恢复为“空闲中”，其他用户可以预约
+
+---
+
+## 📦 四、关于数据库表的设计与 `venue_schedule` 的问题
+
+### ❓ 你说的 `venue_schedule` 是生成每一个场地每一个时段的预约情况吗？
+
+这取决于你的系统设计方式。我们可以对比两种常见方案：
+
+---
+
+### ✅ 方案一：使用 `ReservationOrder` 表记录预约信息（推荐做法）
+
+#### 数据表：`ReservationOrder`
+
+| 字段名 | 类型 | 描述 |
+|--------|------|------|
+| id | Long | 主键 |
+| venueId | Long | 场地ID |
+| date | Date | 预约日期 |
+| startTime | Time | 开始时间 |
+| endTime | Time | 结束时间 |
+| status | String | 订单状态（待支付 / 已支付 / 已取消） |
+
+#### 特点：
+- 不需要为每个小时建一行数据
+- 只有真实预约才会写入数据
+- 支持任意时间段预约（如 19:30~20:30）
+
+📌 这是**最推荐的做法**，灵活且高效。
+
+---
+
+### ❌ 方案二：使用 `venue_schedule` 表预生成所有场地所有时段的状态
+
+#### 数据表：`venue_schedule`
+
+| 字段名 | 类型 | 描述 |
+|--------|------|------|
+| id | Long | 主键 |
+| venueId | Long | 场地ID |
+| date | Date | 日期 |
+| timeSlot | String | 时间段（如 19:00-20:00） |
+| status | String | 状态（空闲中 / 已预约 / 使用中） |
+
+#### 特点：
+- 每天为每个场地生成多个时间段记录（如 13 个时间段 × 9 个场地）
+- 数据冗余严重
+- 查询方便但维护成本高
+
+📌 这种做法**不推荐**，除非你有特殊需求（如固定时间段预约 + 报表统计）
+
+---
+
+## ✅ 总结一句话：
+
+> 我们不需要专门建立 `venue_schedule` 表来记录每个场地每个时段的预约情况，而是通过 `ReservationOrder` 表动态管理预约记录，结合查询判断时间段是否被占用即可实现完整的预约功能。
+
+---
+
+## 📊 五、可视化矩阵图的数据来源
+
+虽然没有 `venue_schedule` 表，但我们仍然可以生成可视化的预约矩阵图，只需：
+
+### 1. 定义默认开放时间段（如 18:00-21:00）
+
+### 2. 查询当天所有预约订单（按时间段切分）
+
+### 3. 对比每个时间段是否被预约
+
+最终返回给前端的 JSON 格式如下：
+
+```json
+{
+  "venues": [
+    {
+      "venueId": 1,
+      "name": "羽毛球场1号",
+      "slots": [
+        { "time": "18:00-19:00", "status": "available" },
+        { "time": "19:00-20:00", "status": "occupied" },
+        { "time": "20:00-21:00", "status": "available" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## ✅ 六、总结一句话：
+
+> 整个预约流程从用户点击预约开始，经过权限验证、场地状态检查、订单创建、支付等步骤，最终通过 `ReservationOrder` 表记录预约信息。  
+> 不需要为每个场地每个时段生成数据表，而是通过动态查询判断时间段是否被占用，即可实现场地预约矩阵图的展示。
 
 ## 💳 二、预约下单与支付流程模块
 
