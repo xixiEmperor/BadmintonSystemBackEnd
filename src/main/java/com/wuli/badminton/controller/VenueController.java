@@ -91,6 +91,7 @@ public class VenueController {
     
     /**
      * 更新场地状态（管理员权限）
+     * 场地基础状态：0-未启用，1-启用
      */
     @PutMapping("/status/{id}")
     @PreAuthorize("hasRole('ADMIN')")

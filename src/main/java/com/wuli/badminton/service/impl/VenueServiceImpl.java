@@ -111,9 +111,9 @@ public class VenueServiceImpl implements VenueService {
         venue.setCreateTime(now);
         venue.setUpdateTime(now);
         
-        // 设置默认状态为空闲中
+        // 设置默认状态为启用
         if (venue.getStatus() == null) {
-            venue.setStatus(VenueStatusEnum.AVAILABLE.getCode());
+            venue.setStatus(1);
         }
         
         int result = venueMapper.insert(venue);
@@ -171,17 +171,17 @@ public class VenueServiceImpl implements VenueService {
             return ResponseVo.error(ResponseEnum.VENUE_NOT_EXIST);
         }
         
-        // 验证状态值是否有效
-        VenueStatusEnum statusEnum = VenueStatusEnum.getByCode(status);
-        if (statusEnum == null) {
+        // 验证状态值只能是0或1
+        if (status == null || (status != 0 && status != 1)) {
             log.warn("【更新场地状态】无效的状态值: {}", status);
-            return ResponseVo.error(ResponseEnum.PARAM_ERROR, "无效的场地状态");
+            return ResponseVo.error(ResponseEnum.PARAM_ERROR, "场地状态只能是0(未启用)或1(启用)");
         }
         
         int result = venueMapper.updateStatus(id, status);
         
         if (result > 0) {
-            log.info("【更新场地状态】更新成功，场地: {}, 状态: {}", venue.getName(), statusEnum.getDesc());
+            String statusDesc = status == 1 ? "启用" : "未启用";
+            log.info("【更新场地状态】更新成功，场地: {}, 状态: {}", venue.getName(), statusDesc);
             return ResponseVo.success("场地状态更新成功");
         } else {
             log.error("【更新场地状态】更新失败，场地ID: {}", id);
@@ -349,11 +349,11 @@ public class VenueServiceImpl implements VenueService {
         VenueStatusMatrixVo.TimeSlotStatus status = new VenueStatusMatrixVo.TimeSlotStatus();
         
         // 1. 检查场地基础状态
-        if (!VenueStatusEnum.AVAILABLE.getCode().equals(venue.getStatus())) {
+        if (venue.getStatus() != 1) {
             status.setStatus(4);
             status.setStatusDesc("维护中");
             status.setBookable(false);
-            status.setReason("场地维护");
+            status.setReason("场地未启用");
             return status;
         }
         
@@ -504,7 +504,7 @@ public class VenueServiceImpl implements VenueService {
         venueInfo.setName(venue.getName());
         venueInfo.setLocation(venue.getLocation());
         venueInfo.setPricePerHour(venue.getPricePerHour());
-        venueInfo.setIsAvailable(VenueStatusEnum.AVAILABLE.getCode().equals(venue.getStatus()));
+        venueInfo.setIsAvailable(venue.getStatus() == 1);
         return venueInfo;
     }
     
@@ -519,8 +519,7 @@ public class VenueServiceImpl implements VenueService {
         venueVo.setTypeDesc(venue.getType() == 1 ? "羽毛球场" : "未知");
         
         // 设置状态描述
-        VenueStatusEnum statusEnum = VenueStatusEnum.getByCode(venue.getStatus());
-        venueVo.setStatusDesc(statusEnum != null ? statusEnum.getDesc() : "未知");
+        venueVo.setStatusDesc(venue.getStatus() == 1 ? "启用" : "未启用");
         
         // 格式化时间
         if (venue.getCreateTime() != null) {
@@ -576,12 +575,8 @@ public class VenueServiceImpl implements VenueService {
                 }
             }
             
-            // 7. 对可用场地进行排序（推荐场地优先，然后按价格排序）
-            availableVenues.sort((v1, v2) -> {
-                if (v1.getIsRecommended() && !v2.getIsRecommended()) return -1;
-                if (!v1.getIsRecommended() && v2.getIsRecommended()) return 1;
-                return v1.getPricePerHour().compareTo(v2.getPricePerHour());
-            });
+            // 7. 对可用场地进行排序（按价格排序）
+            availableVenues.sort((v1, v2) -> v1.getPricePerHour().compareTo(v2.getPricePerHour()));
             
             // 8. 构建响应
             VenueAvailabilityVo result = new VenueAvailabilityVo();
@@ -613,8 +608,8 @@ public class VenueServiceImpl implements VenueService {
         
         return venues.stream()
                 .filter(venue -> {
-                    // 只选择可用状态的场地
-                    if (!VenueStatusEnum.AVAILABLE.getCode().equals(venue.getStatus())) {
+                    // 只选择启用状态的场地
+                    if (venue.getStatus() != 1) {
                         return false;
                     }
                     
@@ -679,9 +674,6 @@ public class VenueServiceImpl implements VenueService {
             result.setAvailable(true);
             result.setReason(null);
             result.setStatus(1); // 空闲中
-            
-            // 设置推荐信息
-            setRecommendationInfo(venue, result, isWeekend);
         }
         
         return result;
@@ -763,37 +755,6 @@ public class VenueServiceImpl implements VenueService {
     }
     
     /**
-     * 设置推荐信息
-     */
-    private void setRecommendationInfo(Venue venue, VenueAvailabilityResult result, boolean isWeekend) {
-        List<String> reasons = new ArrayList<>();
-        
-        // 价格推荐
-        if (venue.getPricePerHour().compareTo(new BigDecimal("35")) <= 0) {
-            reasons.add("价格优惠");
-        }
-        
-        // 周末推荐
-        if (isWeekend) {
-            reasons.add("周末可用");
-        }
-        
-        // 设施推荐（可以根据场地描述或其他字段判断）
-        if (venue.getDescription() != null && 
-            (venue.getDescription().contains("专业") || venue.getDescription().contains("标准"))) {
-            reasons.add("设施专业");
-        }
-        
-        if (!reasons.isEmpty()) {
-            result.setRecommended(true);
-            result.setRecommendReason(String.join("、", reasons));
-        } else {
-            result.setRecommended(false);
-            result.setRecommendReason(null);
-        }
-    }
-    
-    /**
      * 转换为可用场地VO
      */
     private VenueAvailabilityVo.AvailableVenue convertToAvailableVenue(
@@ -807,8 +768,6 @@ public class VenueServiceImpl implements VenueService {
         availableVenue.setPricePerHour(venue.getPricePerHour());
         availableVenue.setType(venue.getType());
         availableVenue.setTypeDesc(venue.getType() == 1 ? "羽毛球场" : "未知");
-        availableVenue.setIsRecommended(result.isRecommended());
-        availableVenue.setRecommendReason(result.getRecommendReason());
         
         return availableVenue;
     }
@@ -839,8 +798,6 @@ public class VenueServiceImpl implements VenueService {
         private boolean available;
         private String reason;
         private Integer status;
-        private boolean recommended;
-        private String recommendReason;
         
         // getters and setters
         public Venue getVenue() { return venue; }
@@ -851,9 +808,5 @@ public class VenueServiceImpl implements VenueService {
         public void setReason(String reason) { this.reason = reason; }
         public Integer getStatus() { return status; }
         public void setStatus(Integer status) { this.status = status; }
-        public boolean isRecommended() { return recommended; }
-        public void setRecommended(boolean recommended) { this.recommended = recommended; }
-        public String getRecommendReason() { return recommendReason; }
-        public void setRecommendReason(String recommendReason) { this.recommendReason = recommendReason; }
     }
 } 

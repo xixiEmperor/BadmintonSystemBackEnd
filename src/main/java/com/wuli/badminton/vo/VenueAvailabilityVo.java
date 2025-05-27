@@ -52,8 +52,6 @@ public class VenueAvailabilityVo {
         private BigDecimal pricePerHour;
         private Integer type;
         private String typeDesc;
-        private Boolean isRecommended; // 是否推荐（如价格合适、设施好等）
-        private String recommendReason; // 推荐理由
     }
     
     /**

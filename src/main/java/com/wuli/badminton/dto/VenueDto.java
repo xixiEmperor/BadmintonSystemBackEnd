@@ -44,7 +44,7 @@ public class VenueDto {
     private Integer type = 1;
     
     /**
-     * 场地状态（1-空闲中 2-使用中 3-已预约 4-维护中）
+     * 场地基础状态：0-未启用，1-启用
      */
     private Integer status = 1;
 } 

@@ -41,7 +41,7 @@ public class Venue {
     private Integer type;
     
     /**
-     * 场地基础状态：1-可用，0-不可用（用于场地本身的启用/禁用）
+     * 场地基础状态：0-未启用，1-启用
      */
     private Integer status;
     

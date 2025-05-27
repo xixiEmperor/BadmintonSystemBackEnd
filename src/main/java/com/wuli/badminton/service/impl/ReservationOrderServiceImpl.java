@@ -63,7 +63,7 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             if (venue == null) {
                 return ResponseVo.error(ResponseEnum.VENUE_NOT_EXIST);
             }
-            if (!VenueStatusEnum.AVAILABLE.getCode().equals(venue.getStatus())) {
+            if (venue.getStatus() != 1) {
                 return ResponseVo.error(ResponseEnum.VENUE_UNDER_MAINTENANCE);
             }
             

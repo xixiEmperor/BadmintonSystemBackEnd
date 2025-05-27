@@ -1,5 +1,24 @@
 ### 羽毛球场地管理系统 - API测试指南
 
+## 场地状态设计说明
+
+### 场地基础状态（存储在数据库）
+- **0**: 未启用 - 场地未启用，所有时段都不可用
+- **1**: 启用 - 场地已启用，具体时段状态需要动态计算
+
+### 时段状态（动态计算）
+通过以下数据源实时计算得出：
+- **1**: 空闲中 - 可以预约
+- **2**: 使用中 - 不可预约（教学时间/用户使用中）
+- **3**: 已预约 - 已被预约，不可预约
+- **4**: 维护中 - 不可预约（场地维护/特殊配置）
+
+### 状态计算优先级
+1. 场地基础状态检查：venue.status != 1 → 维护中(4)
+2. 特殊日期配置检查：按配置返回状态
+3. 预约记录检查：有冲突 → 已预约(3)或使用中(2)
+4. 默认业务规则：教学时间 → 使用中(2)，其他 → 空闲中(1)
+
 ## 1. 场地状态查询流程
 
 ### 1.1 获取场地状态矩阵（可视化展示）
@@ -42,23 +61,37 @@ Authorization: Bearer {{token}}
 GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
 Accept: application/json
 
-## 3. 用户到场管理流程
+## 3. 场地基础状态管理（管理员）
 
-### 3.1 管理员查看当前预约
-GET http://localhost:8080/api/reservations/venue/1?date=2024-12-25
+### 3.1 获取所有场地基础信息
+GET http://localhost:8080/api/venue/list
+Accept: application/json
+
+### 3.2 更新场地基础状态（启用/禁用）
+PUT http://localhost:8080/api/venue/status/1?status=0
 Authorization: Bearer {{admin_token}}
 
-### 3.2 用户到场签到（完成订单）
-POST http://localhost:8080/api/reservations/admin/123/complete
-Authorization: Bearer {{admin_token}}
-
-### 3.3 验证使用中状态
+### 3.3 验证禁用后的时段状态
 GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
 Accept: application/json
 
-## 4. 并发控制测试
+## 4. 用户到场管理流程
 
-### 4.1 用户A创建订单
+### 4.1 管理员查看当前预约
+GET http://localhost:8080/api/reservations/venue/1?date=2024-12-25
+Authorization: Bearer {{admin_token}}
+
+### 4.2 用户到场签到（完成订单）
+POST http://localhost:8080/api/reservations/admin/123/complete
+Authorization: Bearer {{admin_token}}
+
+### 4.3 验证使用中状态
+GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
+Accept: application/json
+
+## 5. 并发控制测试
+
+### 5.1 用户A创建订单
 POST http://localhost:8080/api/reservations/create
 Content-Type: application/json
 Authorization: Bearer {{userA_token}}
@@ -72,7 +105,7 @@ Authorization: Bearer {{userA_token}}
   "remark": "用户A预约"
 }
 
-### 4.2 用户B同时创建订单（应失败）
+### 5.2 用户B同时创建订单（应失败）
 POST http://localhost:8080/api/reservations/create
 Content-Type: application/json
 Authorization: Bearer {{userB_token}}
@@ -86,80 +119,110 @@ Authorization: Bearer {{userB_token}}
   "remark": "用户B预约"
 }
 
-## 5. 订单状态变化测试
+## 6. 错误场景测试
 
-### 5.1 订单取消释放时段
-POST http://localhost:8080/api/reservations/{{orderId}}/cancel
+### 6.1 场地未启用时预约
+PUT http://localhost:8080/api/venue/status/1?status=0
+Authorization: Bearer {{admin_token}}
+
+POST http://localhost:8080/api/reservations/create
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "reason": "临时有事"
-}
-
-### 5.2 验证时段释放
-GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=1
-Accept: application/json
-
-### 5.3 其他用户预约释放的时段
-POST http://localhost:8080/api/reservations/create
-Content-Type: application/json
-Authorization: Bearer {{userC_token}}
-
-{
   "venueId": 1,
   "reservationDate": "2024-12-25",
-  "startTime": "20:00",
-  "endTime": "21:00",
-  "payType": 1,
-  "remark": "用户C预约"
+  "startTime": "19:00",
+  "endTime": "20:00",
+  "payType": 1
 }
 
-## 6. 状态映射验证
+### 6.2 无效的场地状态
+PUT http://localhost:8080/api/venue/status/1?status=2
+Authorization: Bearer {{admin_token}}
 
-### 6.1 四种状态对应关系
-```
-状态1 - 空闲中：绿色，可预约
-状态2 - 使用中：橙色，不可预约（教学时间/用户使用中）
-状态3 - 已预约：红色，不可预约（待支付/已支付）
-状态4 - 维护中：灰色，不可预约（场地维护）
-```
-
-### 6.2 订单状态驱动场地状态
-```
-待支付(1) → 场地状态3（已预约）
-已支付(2) → 场地状态3（已预约）
-已完成(3) → 场地状态2（使用中）
-已取消(4) → 场地状态1（空闲中）
-```
-
-## 7. 错误场景测试
-
-### 7.1 无效日期格式
-GET http://localhost:8080/api/venue/status-matrix?date=2024/12/25
-Accept: application/json
-
-### 7.2 不存在的场地
-GET http://localhost:8080/api/venue/status-matrix?date=2024-12-25&venueId=999
-Accept: application/json
-
-### 7.3 时间段错误
+### 6.3 时间段错误
 GET http://localhost:8080/api/venue/availability?date=2024-12-25&startTime=20:00&endTime=19:00
 Accept: application/json
 
+## 7. 响应数据结构说明
+
+### 7.1 可用性查询响应
+```json
+{
+  "code": 0,
+  "msg": "成功",
+  "data": {
+    "date": "2024-12-25",
+    "timeSlot": "19:00-20:00",
+    "totalVenues": 9,
+    "totalAvailable": 5,
+    "availableVenues": [
+      {
+        "id": 1,
+        "name": "羽毛球场1号",
+        "description": "标准羽毛球场地",
+        "location": "体育馆1号场地",
+        "pricePerHour": 30.00,
+        "type": 1,
+        "typeDesc": "羽毛球场"
+      }
+    ],
+    "unavailableVenues": [
+      {
+        "id": 2,
+        "name": "羽毛球场2号",
+        "location": "体育馆2号场地",
+        "pricePerHour": 30.00,
+        "unavailableReason": "该时间段为教学时间",
+        "status": 2,
+        "statusDesc": "使用中"
+      }
+    ]
+  }
+}
+```
+
+### 7.2 状态矩阵响应
+```json
+{
+  "code": 0,
+  "msg": "成功",
+  "data": {
+    "date": "2024-12-25",
+    "venues": [
+      {
+        "id": 1,
+        "name": "羽毛球场1号",
+        "location": "体育馆1号场地",
+        "pricePerHour": 30.00,
+        "isAvailable": true
+      }
+    ],
+    "timeSlots": ["08:00-09:00", "09:00-10:00", "18:00-19:00"],
+    "statusMatrix": {
+      "1": {
+        "08:00-09:00": {
+          "status": 2,
+          "statusDesc": "使用中",
+          "bookable": false,
+          "reason": "教学时间"
+        },
+        "19:00-20:00": {
+          "status": 1,
+          "statusDesc": "空闲中",
+          "bookable": true,
+          "reason": null
+        }
+      }
+    }
+  }
+}
+```
+
 ## 8. 前端集成建议
 
-### 8.1 页面加载策略
-- 初始加载：调用状态矩阵接口
-- 用户操作：调用可用性检查接口
-- 预约成功：刷新状态矩阵
-
-### 8.2 轮询策略
-- 用户活跃时：30秒轮询
-- 页面隐藏时：停止轮询
-- 页面重新可见：立即刷新
-
-### 8.3 状态颜色映射
+### 8.1 状态颜色映射
 ```javascript
 const STATUS_COLORS = {
   1: '#52c41a', // 空闲中 - 绿色
@@ -167,4 +230,9 @@ const STATUS_COLORS = {
   3: '#f5222d', // 已预约 - 红色
   4: '#d9d9d9'  // 维护中 - 灰色
 };
-``` 
+```
+
+### 8.2 场地基础状态管理
+- 管理员可以设置场地的基础状态（启用/禁用）
+- 禁用的场地所有时段都显示为维护中
+- 启用的场地时段状态由业务规则动态计算 
