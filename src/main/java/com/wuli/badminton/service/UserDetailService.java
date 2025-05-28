@@ -16,4 +16,10 @@ public interface UserDetailService {
      * @return 更新后的用户详情
      */
     UserDetail updateUserDetail(Long userId, UserProfileUpdateDto updateDto);
+    
+    /**
+     * 更新用户最后登录时间
+     * @param userId 用户ID
+     */
+    void updateLastLoginTime(Long userId);
 } 

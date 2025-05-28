@@ -81,11 +81,6 @@ public class ReservationOrder {
     private Long payInfoId;
     
     /**
-     * 支付方式：1-支付宝，2-微信
-     */
-    private Integer payType;
-    
-    /**
      * 支付时间
      */
     private Date payTime;

@@ -34,11 +34,6 @@ public class ReservationOrderQueryDto {
     private String endDate;
     
     /**
-     * 支付方式
-     */
-    private Integer payType;
-    
-    /**
      * 订单号
      */
     private String orderNo;

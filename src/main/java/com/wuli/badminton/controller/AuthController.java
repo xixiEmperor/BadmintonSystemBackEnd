@@ -49,11 +49,16 @@ public class AuthController {
             );
 
             String token = jwtUtil.generateToken(authentication);
+            User loginUser = userService.findByUsername(user.getUsername());
+            
+            // 更新最后登录时间
+            userService.updateLastLoginTime(loginUser.getId());
+            
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
-            data.put("userId", userService.findByUsername(user.getUsername()).getId());
+            data.put("userId", loginUser.getId());
             data.put("username", user.getUsername());
-            data.put("avatar", userService.findByUsername(user.getUsername()).getAvatar());
+            data.put("avatar", loginUser.getAvatar());
             
             logger.info("登录成功: {}", user.getUsername());
             return ResponseVo.success("登录成功", data);

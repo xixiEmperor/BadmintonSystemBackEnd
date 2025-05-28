@@ -22,4 +22,11 @@
             update_time = NOW()
         WHERE id = #{id}
     </update>
+    
+    <!-- 更新用户最后登录时间 -->
+    <update id="updateLastLoginTime">
+        UPDATE user_detail 
+        SET last_login_at = NOW(), update_time = NOW() 
+        WHERE user_id = #{userId}
+    </update>
 </mapper> 

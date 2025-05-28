@@ -224,7 +224,23 @@ public enum ResponseEnum {
     /**
      * 退款申请成功
      */
-    REFUND_REQUEST_SUCCESS(0, "退款申请提交成功");
+    REFUND_REQUEST_SUCCESS(0, "退款申请提交成功"),
+    
+    // 用户管理相关错误码 (30000-30999)
+    /**
+     * 用户不存在
+     */
+    USER_NOT_EXIST(30001, "用户不存在"),
+    
+    /**
+     * 密码重置失败
+     */
+    PASSWORD_RESET_FAILED(30002, "密码重置失败"),
+    
+    /**
+     * 权限不足
+     */
+    PERMISSION_DENIED(30003, "权限不足，仅管理员可操作");
     
     /**
      * 状态码

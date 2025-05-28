@@ -123,4 +123,15 @@ public class UserDetailServiceImpl implements UserDetailService {
         
         return userDetail;
     }
+
+    @Override
+    public void updateLastLoginTime(Long userId) {
+        logger.info("更新用户最后登录时间，用户ID: {}", userId);
+        try {
+            userDetailMapper.updateLastLoginTime(userId);
+            logger.info("用户最后登录时间更新成功，用户ID: {}", userId);
+        } catch (Exception e) {
+            logger.error("更新用户最后登录时间失败，用户ID: {}, 错误: {}", userId, e.getMessage(), e);
+        }
+    }
 } 

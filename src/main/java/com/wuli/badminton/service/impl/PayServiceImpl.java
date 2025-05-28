@@ -69,30 +69,82 @@ public class PayServiceImpl implements PayService {
      */
     @Override
     public PayResponse create(String orderId, BigDecimal amount, BestPayTypeEnum bestPayTypeEnum, String businessType) {
-        // 写入数据库
-        PayInfo payInfo = new PayInfo();
-        payInfo.setOrderNo(orderId); // 直接使用字符串订单号
-        payInfo.setPayPlatform(PayPlatFormEnum.getByBestPayTypeEnum(bestPayTypeEnum).getCode());
-        payInfo.setPlatformStatus(OrderStatusEnum.NOTPAY.name());
-        payInfo.setBusinessType(businessType);
-        payInfo.setPayAmount(amount);
-        payInfo.setStatus(0); // 未支付
-        payInfo.setCreateTime(new Date());
-        payInfo.setUpdateTime(new Date());
-        
-        payInfoMapper.insert(payInfo);
-        
-        // 创建支付请求
-        PayRequest request = new PayRequest();
-        request.setOrderName("BadmintonSystem订单");
-        request.setOrderId(orderId);
-        request.setOrderAmount(amount.doubleValue());
-        request.setPayTypeEnum(bestPayTypeEnum);
-        
-        PayResponse response = bestPayService.pay(request);
-        logger.info("支付响应: {}", response);
-        
-        return response;
+        // 使用 synchronized 防止同一订单的并发创建
+        synchronized (("PAY_CREATE_" + orderId).intern()) {
+            // 再次检查是否已经存在支付记录（双重检查锁定）
+            PayInfo existingPayInfo = payInfoMapper.selectByOrderNo(orderId);
+            if (existingPayInfo != null) {
+                logger.info("订单{}已存在支付记录，直接返回支付信息", orderId);
+                
+                // 如果已经支付成功，抛出异常
+                if (existingPayInfo.getStatus() == 1) {
+                    throw new RuntimeException("订单已支付，无法重复创建支付");
+                }
+                
+                // 如果未支付，重新创建支付请求
+                PayRequest request = new PayRequest();
+                request.setOrderName("BadmintonSystem订单");
+                request.setOrderId(orderId);
+                request.setOrderAmount(amount.doubleValue());
+                request.setPayTypeEnum(bestPayTypeEnum);
+                
+                PayResponse response = bestPayService.pay(request);
+                logger.info("重新生成支付响应: {}", response);
+                return response;
+            }
+            
+            // 写入数据库
+            PayInfo payInfo = new PayInfo();
+            payInfo.setOrderNo(orderId); // 直接使用字符串订单号
+            payInfo.setPayPlatform(PayPlatFormEnum.getByBestPayTypeEnum(bestPayTypeEnum).getCode());
+            payInfo.setPlatformStatus(OrderStatusEnum.NOTPAY.name());
+            payInfo.setBusinessType(businessType);
+            payInfo.setPayAmount(amount);
+            payInfo.setStatus(0); // 未支付
+            payInfo.setCreateTime(new Date());
+            payInfo.setUpdateTime(new Date());
+            
+            try {
+                payInfoMapper.insert(payInfo);
+                logger.info("成功创建支付记录: orderNo={}", orderId);
+            } catch (Exception e) {
+                logger.error("创建支付记录失败: orderNo={}, error={}", orderId, e.getMessage());
+                // 处理并发情况下的唯一约束冲突
+                if (e.getMessage().contains("Duplicate entry") && e.getMessage().contains("uqe_order_no")) {
+                    logger.warn("并发创建支付记录，订单号{}已存在，重新查询", orderId);
+                    PayInfo concurrentPayInfo = payInfoMapper.selectByOrderNo(orderId);
+                    if (concurrentPayInfo != null) {
+                        if (concurrentPayInfo.getStatus() == 1) {
+                            throw new RuntimeException("订单已支付，无法重复创建支付");
+                        }
+                        // 如果是未支付状态，重新生成支付请求
+                        PayRequest request = new PayRequest();
+                        request.setOrderName("BadmintonSystem订单");
+                        request.setOrderId(orderId);
+                        request.setOrderAmount(amount.doubleValue());
+                        request.setPayTypeEnum(bestPayTypeEnum);
+                        
+                        PayResponse response = bestPayService.pay(request);
+                        logger.info("并发处理-重新生成支付响应: {}", response);
+                        return response;
+                    }
+                }
+                // 其他异常直接抛出
+                throw e;
+            }
+            
+            // 创建支付请求
+            PayRequest request = new PayRequest();
+            request.setOrderName("BadmintonSystem订单");
+            request.setOrderId(orderId);
+            request.setOrderAmount(amount.doubleValue());
+            request.setPayTypeEnum(bestPayTypeEnum);
+            
+            PayResponse response = bestPayService.pay(request);
+            logger.info("支付响应: {}", response);
+            
+            return response;
+        }
     }
     
     /**

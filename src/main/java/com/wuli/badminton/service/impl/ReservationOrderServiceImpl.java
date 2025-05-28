@@ -149,7 +149,6 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             order.setPricePerHour(venue.getPricePerHour());
             order.setTotalAmount(venue.getPricePerHour().multiply(duration));
             order.setStatus(ReservationStatusEnum.PENDING_PAYMENT.getCode());
-            order.setPayType(dto.getPayType());
             order.setRemark(dto.getRemark());
             order.setCreateTime(new Date());
             order.setUpdateTime(new Date());
@@ -316,7 +315,7 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             return ResponseVo.error(ResponseEnum.ORDER_PAID);
         }
         
-        int result = reservationOrderMapper.updatePayInfo(order.getId(), payInfoId, order.getPayType(), new Date());
+        int result = reservationOrderMapper.updatePayInfo(order.getId(), payInfoId, null, new Date());
         if (result > 0) {
             reservationOrderMapper.updateStatus(order.getId(), ReservationStatusEnum.PAID.getCode());
             return ResponseVo.success("支付成功");
@@ -517,10 +516,7 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             vo.setStatusDesc(statusEnum.getDesc());
         }
         
-        // 设置支付方式描述
-        if (order.getPayType() != null) {
-            vo.setPayTypeDesc(order.getPayType() == 1 ? "支付宝" : "微信");
-        }
+        // 支付方式描述已移除，因为payType字段已从数据库中删除
         
         // 设置操作权限
         vo.setCanCancel(ReservationStatusEnum.PENDING_PAYMENT.getCode().equals(order.getStatus()));

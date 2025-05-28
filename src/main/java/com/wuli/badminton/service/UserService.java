@@ -1,8 +1,11 @@
 package com.wuli.badminton.service;
 
 import com.wuli.badminton.dto.AvatarResponseDto;
+import com.wuli.badminton.dto.PageResult;
+import com.wuli.badminton.dto.UserManageDto;
 import com.wuli.badminton.dto.UserProfileDto;
 import com.wuli.badminton.dto.UserProfileUpdateDto;
+import com.wuli.badminton.dto.UserSearchDto;
 import com.wuli.badminton.pojo.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -50,6 +53,26 @@ public interface UserService extends UserDetailsService {
      * @return 用户对象，如果不存在则返回null
      */
     User getUserById(Long userId);
+    
+    /**
+     * 重置用户密码为默认密码123456
+     * @param userId 用户ID
+     * @return 是否重置成功
+     */
+    boolean resetUserPassword(Long userId);
+    
+    /**
+     * 分页查询用户列表（管理员功能）
+     * @param searchDto 搜索条件
+     * @return 分页结果
+     */
+    PageResult<UserManageDto> getUsersWithPagination(UserSearchDto searchDto);
+    
+    /**
+     * 更新用户最后登录时间
+     * @param userId 用户ID
+     */
+    void updateLastLoginTime(Long userId);
     
     @Override
     UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;

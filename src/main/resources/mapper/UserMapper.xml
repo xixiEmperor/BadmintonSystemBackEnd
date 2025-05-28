@@ -21,4 +21,37 @@
     <update id="updateAvatar">
         UPDATE user SET avatar = #{avatar}, update_time = NOW() WHERE id = #{id}
     </update>
+    
+    <!-- 重置用户密码 -->
+    <update id="resetPassword">
+        UPDATE user SET password = #{password}, update_time = NOW() WHERE id = #{id}
+    </update>
+    
+    <!-- 分页查询用户列表 -->
+    <select id="findUsersWithPagination" resultType="com.wuli.badminton.pojo.User">
+        SELECT * FROM user
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND username LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{size}
+    </select>
+    
+    <!-- 统计用户总数 -->
+    <select id="countUsers" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM user
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND username LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+        </where>
+    </select>
 </mapper> 

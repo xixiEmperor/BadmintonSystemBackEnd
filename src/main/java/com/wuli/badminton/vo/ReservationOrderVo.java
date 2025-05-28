@@ -85,16 +85,6 @@ public class ReservationOrderVo {
     private String statusDesc;
     
     /**
-     * 支付方式
-     */
-    private Integer payType;
-    
-    /**
-     * 支付方式描述
-     */
-    private String payTypeDesc;
-    
-    /**
      * 支付时间
      */
     private String payTime;

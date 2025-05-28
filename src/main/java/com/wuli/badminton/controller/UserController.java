@@ -1,8 +1,11 @@
 package com.wuli.badminton.controller;
 
 import com.wuli.badminton.dto.AvatarResponseDto;
+import com.wuli.badminton.dto.PageResult;
+import com.wuli.badminton.dto.UserManageDto;
 import com.wuli.badminton.dto.UserProfileDto;
 import com.wuli.badminton.dto.UserProfileUpdateDto;
+import com.wuli.badminton.dto.UserSearchDto;
 import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.service.UserService;
@@ -109,6 +112,90 @@ public class UserController {
         } catch (Exception e) {
             logger.error("头像上传失败: {}", e.getMessage(), e);
             return ResponseVo.error(ResponseEnum.FILE_UPLOAD_ERROR);
+        }
+    }
+    
+    // ==================== 管理员功能 ====================
+    
+    /**
+     * 管理员分页查询用户列表
+     * @param searchDto 搜索条件
+     * @return 用户列表
+     */
+    @GetMapping("/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseVo<?> adminGetUserList(UserSearchDto searchDto) {
+        logger.info("管理员查询用户列表，搜索条件: {}", searchDto);
+        
+        try {
+            PageResult<UserManageDto> result = userService.getUsersWithPagination(searchDto);
+            logger.info("查询用户列表成功，总数: {}", result.getTotal());
+            return ResponseVo.success("查询成功", result);
+        } catch (Exception e) {
+            logger.error("查询用户列表失败: {}", e.getMessage(), e);
+            return ResponseVo.error(ResponseEnum.SERVER_ERROR);
+        }
+    }
+
+    /**
+     * 管理员重置用户密码
+     * @param userId 用户ID
+     * @return 重置结果
+     */
+    @PutMapping("/admin/users/{userId}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseVo<?> adminResetUserPassword(@PathVariable Long userId) {
+        logger.info("管理员重置用户密码，用户ID: {}", userId);
+        
+        try {
+            // 检查用户是否存在
+            if (userService.getUserById(userId) == null) {
+                logger.warn("用户不存在，ID: {}", userId);
+                return ResponseVo.error(ResponseEnum.USER_NOT_EXIST);
+            }
+            
+            // 重置密码
+            boolean success = userService.resetUserPassword(userId);
+            
+            if (success) {
+                logger.info("用户密码重置成功，用户ID: {}", userId);
+                return ResponseVo.success("密码重置成功，新密码为：123456");
+            } else {
+                logger.error("用户密码重置失败，用户ID: {}", userId);
+                return ResponseVo.error(ResponseEnum.PASSWORD_RESET_FAILED);
+            }
+        } catch (Exception e) {
+            logger.error("重置用户密码异常，用户ID: {}, 错误: {}", userId, e.getMessage(), e);
+            return ResponseVo.error(ResponseEnum.SERVER_ERROR);
+        }
+    }
+
+    /**
+     * 管理员获取用户详细信息
+     * @param userId 用户ID
+     * @return 用户详细信息
+     */
+    @GetMapping("/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseVo<?> adminGetUserDetail(@PathVariable Long userId) {
+        logger.info("管理员查询用户详情，用户ID: {}", userId);
+        
+        try {
+            // 获取用户基本信息
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                logger.warn("用户不存在，ID: {}", userId);
+                return ResponseVo.error(ResponseEnum.USER_NOT_EXIST);
+            }
+            
+            // 获取用户详细资料
+            UserProfileDto userProfile = userService.getUserProfile(userId);
+            
+            logger.info("查询用户详情成功，用户ID: {}, 用户名: {}", userId, user.getUsername());
+            return ResponseVo.success("查询成功", userProfile);
+        } catch (Exception e) {
+            logger.error("查询用户详情失败，用户ID: {}, 错误: {}", userId, e.getMessage(), e);
+            return ResponseVo.error(ResponseEnum.SERVER_ERROR);
         }
     }
 } 
