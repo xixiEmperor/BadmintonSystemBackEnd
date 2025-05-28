@@ -8,7 +8,6 @@ import com.wuli.badminton.dto.ReservationOrderQueryDto;
 import com.wuli.badminton.dto.VenueAvailabilityDto;
 import com.wuli.badminton.enums.ReservationStatusEnum;
 import com.wuli.badminton.enums.ResponseEnum;
-import com.wuli.badminton.enums.VenueStatusEnum;
 import com.wuli.badminton.pojo.ReservationOrder;
 import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.pojo.Venue;

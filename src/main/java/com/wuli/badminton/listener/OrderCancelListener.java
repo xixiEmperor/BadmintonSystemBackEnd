@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wuli.badminton.config.RabbitMQConfig;
 import com.wuli.badminton.enums.ReservationStatusEnum;
 import com.wuli.badminton.pojo.MallOrder;
-import com.wuli.badminton.pojo.ReservationOrder;
 import com.wuli.badminton.service.MallOrderService;
 import com.wuli.badminton.service.ReservationOrderService;
 import com.wuli.badminton.vo.ReservationOrderVo;

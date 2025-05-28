@@ -3,7 +3,6 @@ package com.wuli.badminton.service;
 import com.wuli.badminton.dto.ReservationOrderDto;
 import com.wuli.badminton.dto.ReservationOrderQueryDto;
 import com.wuli.badminton.dto.VenueAvailabilityDto;
-import com.wuli.badminton.pojo.ReservationOrder;
 import com.wuli.badminton.vo.ReservationOrderVo;
 import com.wuli.badminton.vo.ResponseVo;
 

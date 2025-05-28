@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuli.badminton.dao.AnalyticsMapper">
+
+    <!-- ==================== 用户统计 ==================== -->
+    
+    <!-- 获取用户总数 -->
+    <select id="getTotalUsers" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM user
+    </select>
+    
+    <!-- 获取今日新增用户数 -->
+    <select id="getNewUsersToday" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM user 
+        WHERE DATE(create_time) = CURDATE()
+    </select>
+    
+    <!-- 获取本月新增用户数 -->
+    <select id="getNewUsersThisMonth" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM user 
+        WHERE YEAR(create_time) = YEAR(CURDATE()) 
+        AND MONTH(create_time) = MONTH(CURDATE())
+    </select>
+    
+    <!-- 获取今日活跃用户数 -->
+    <select id="getActiveUsersToday" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT ud.user_id) 
+        FROM user_detail ud 
+        WHERE DATE(ud.last_login_at) = CURDATE()
+    </select>
+    
+    <!-- 获取用户注册趋势（最近30天） -->
+    <select id="getUserRegistrationTrend" resultType="java.util.Map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM user 
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date
+    </select>
+    
+    <!-- 获取用户角色分布 -->
+    <select id="getUserRoleDistribution" resultType="java.util.Map">
+        SELECT 
+            CASE 
+                WHEN role = 'ROLE_ADMIN' THEN '管理员'
+                WHEN role = 'ROLE_USER' THEN '普通用户'
+                ELSE '其他'
+            END as name,
+            COUNT(*) as value
+        FROM user 
+        GROUP BY role
+    </select>
+    
+    <!-- ==================== 预约统计 ==================== -->
+    
+    <!-- 获取预约总数 -->
+    <select id="getTotalReservations" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM reservation_order
+    </select>
+    
+    <!-- 获取今日预约数 -->
+    <select id="getReservationsToday" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM reservation_order 
+        WHERE DATE(create_time) = CURDATE()
+    </select>
+    
+    <!-- 获取本月预约数 -->
+    <select id="getReservationsThisMonth" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM reservation_order 
+        WHERE YEAR(create_time) = YEAR(CURDATE()) 
+        AND MONTH(create_time) = MONTH(CURDATE())
+    </select>
+    
+    <!-- 获取预约总收入 -->
+    <select id="getReservationRevenue" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) 
+        FROM reservation_order 
+        WHERE status IN (2, 3)
+    </select>
+    
+    <!-- 获取今日预约收入 -->
+    <select id="getRevenueToday" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) 
+        FROM reservation_order 
+        WHERE status IN (2, 3) 
+        AND DATE(pay_time) = CURDATE()
+    </select>
+    
+    <!-- 获取本月预约收入 -->
+    <select id="getRevenueThisMonth" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) 
+        FROM reservation_order 
+        WHERE status IN (2, 3) 
+        AND YEAR(pay_time) = YEAR(CURDATE()) 
+        AND MONTH(pay_time) = MONTH(CURDATE())
+    </select>
+    
+    <!-- 获取预约趋势（最近30天） -->
+    <select id="getReservationTrend" resultType="java.util.Map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM reservation_order 
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date
+    </select>
+    
+    <!-- 获取场地使用率排行 -->
+    <select id="getVenueUsageRanking" resultType="java.util.Map">
+        SELECT 
+            venue_name as name,
+            COUNT(*) as value
+        FROM reservation_order 
+        WHERE status IN (2, 3)
+        GROUP BY venue_id, venue_name
+        ORDER BY value DESC
+        LIMIT 10
+    </select>
+    
+    <!-- 获取预约状态分布 -->
+    <select id="getReservationStatusDistribution" resultType="java.util.Map">
+        SELECT 
+            CASE status
+                WHEN 1 THEN '待支付'
+                WHEN 2 THEN '已支付'
+                WHEN 3 THEN '已完成'
+                WHEN 4 THEN '已取消'
+                WHEN 5 THEN '已关闭'
+                WHEN 6 THEN '退款中'
+                ELSE '其他'
+            END as name,
+            COUNT(*) as value
+        FROM reservation_order 
+        GROUP BY status
+    </select>
+    
+    <!-- 获取收入趋势（最近30天） -->
+    <select id="getRevenueTrend" resultType="java.util.Map">
+        SELECT 
+            DATE(pay_time) as date,
+            COALESCE(SUM(total_amount), 0) as amount
+        FROM reservation_order 
+        WHERE status IN (2, 3) 
+        AND pay_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(pay_time)
+        ORDER BY date
+    </select>
+    
+    <!-- ==================== 商城统计 ==================== -->
+    
+    <!-- 获取商城订单总数 -->
+    <select id="getTotalMallOrders" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM mall_order
+    </select>
+    
+    <!-- 获取今日商城订单数 -->
+    <select id="getMallOrdersToday" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM mall_order 
+        WHERE DATE(create_time) = CURDATE()
+    </select>
+    
+    <!-- 获取本月商城订单数 -->
+    <select id="getMallOrdersThisMonth" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM mall_order 
+        WHERE YEAR(create_time) = YEAR(CURDATE()) 
+        AND MONTH(create_time) = MONTH(CURDATE())
+    </select>
+    
+    <!-- 获取商城总收入 -->
+    <select id="getMallRevenue" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_price), 0) 
+        FROM mall_order 
+        WHERE status IN (20, 40)
+    </select>
+    
+    <!-- 获取商城今日收入 -->
+    <select id="getMallRevenueToday" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_price), 0) 
+        FROM mall_order 
+        WHERE status IN (20, 40) 
+        AND DATE(payment_time) = CURDATE()
+    </select>
+    
+    <!-- 获取商城本月收入 -->
+    <select id="getMallRevenueThisMonth" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_price), 0) 
+        FROM mall_order 
+        WHERE status IN (20, 40) 
+        AND YEAR(payment_time) = YEAR(CURDATE()) 
+        AND MONTH(payment_time) = MONTH(CURDATE())
+    </select>
+    
+    <!-- 获取商城订单趋势（最近30天） -->
+    <select id="getMallOrderTrend" resultType="java.util.Map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM mall_order 
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date
+    </select>
+    
+    <!-- 获取热门商品排行 -->
+    <select id="getPopularProducts" resultType="java.util.Map">
+        SELECT 
+            moi.product_name as name,
+            SUM(moi.quantity) as value
+        FROM mall_order_item moi
+        JOIN mall_order mo ON moi.order_no = mo.order_no
+        WHERE mo.status IN (20, 40)
+        GROUP BY moi.product_id, moi.product_name
+        ORDER BY value DESC
+        LIMIT 10
+    </select>
+    
+    <!-- 获取商城订单状态分布 -->
+    <select id="getMallOrderStatusDistribution" resultType="java.util.Map">
+        SELECT 
+            CASE status
+                WHEN 10 THEN '未付款'
+                WHEN 20 THEN '已付款'
+                WHEN 30 THEN '已取消'
+                WHEN 40 THEN '已完成'
+                WHEN 50 THEN '已关闭'
+                ELSE '其他'
+            END as name,
+            COUNT(*) as value
+        FROM mall_order 
+        GROUP BY status
+    </select>
+    
+    <!-- ==================== 论坛统计 ==================== -->
+    
+    <!-- 获取帖子总数 -->
+    <select id="getTotalPosts" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM post WHERE status = 1
+    </select>
+    
+    <!-- 获取今日发帖数 -->
+    <select id="getPostsToday" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM post 
+        WHERE status = 1 AND DATE(create_time) = CURDATE()
+    </select>
+    
+    <!-- 获取回复总数 -->
+    <select id="getTotalReplies" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM post_reply WHERE status = 1
+    </select>
+    
+    <!-- 获取今日回复数 -->
+    <select id="getRepliesToday" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM post_reply 
+        WHERE status = 1 AND DATE(create_time) = CURDATE()
+    </select>
+    
+    <!-- 获取发帖趋势（最近30天） -->
+    <select id="getPostTrend" resultType="java.util.Map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM post 
+        WHERE status = 1 AND create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date
+    </select>
+    
+    <!-- 获取帖子分类分布 -->
+    <select id="getPostCategoryDistribution" resultType="java.util.Map">
+        SELECT 
+            pc.name as name,
+            COUNT(p.id) as value
+        FROM post_category pc
+        LEFT JOIN post p ON pc.id = p.category_id AND p.status = 1
+        GROUP BY pc.id, pc.name
+        ORDER BY value DESC
+    </select>
+    
+    <!-- 获取最活跃用户排行 -->
+    <select id="getMostActiveUsers" resultType="java.util.Map">
+        SELECT 
+            u.username as name,
+            (COALESCE(post_count, 0) + COALESCE(reply_count, 0)) as value
+        FROM user u
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) as post_count
+            FROM post 
+            WHERE status = 1
+            GROUP BY user_id
+        ) p ON u.id = p.user_id
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) as reply_count
+            FROM post_reply 
+            WHERE status = 1
+            GROUP BY user_id
+        ) r ON u.id = r.user_id
+        WHERE (COALESCE(post_count, 0) + COALESCE(reply_count, 0)) > 0
+        ORDER BY value DESC
+        LIMIT 10
+    </select>
+    
+    <!-- ==================== 场地统计 ==================== -->
+    
+    <!-- 获取场地总数 -->
+    <select id="getTotalVenues" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM venue
+    </select>
+    
+    <!-- 获取可用场地数 -->
+    <select id="getAvailableVenues" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM venue WHERE status = 1
+    </select>
+    
+    <!-- 获取场地利用率 -->
+    <select id="getVenueUtilizationRate" resultType="java.lang.Double">
+        SELECT 
+            ROUND(
+                (SELECT COUNT(*) FROM reservation_order WHERE status IN (2, 3) AND DATE(reservation_date) = CURDATE()) 
+                / 
+                (SELECT COUNT(*) * 12 FROM venue WHERE status = 1) 
+                * 100, 2
+            ) as utilization_rate
+    </select>
+    
+    <!-- 获取每小时预约分布 -->
+    <select id="getHourlyReservationDistribution" resultType="java.util.Map">
+        SELECT 
+            CONCAT(HOUR(STR_TO_DATE(start_time, '%H:%i')), ':00') as hour,
+            COUNT(*) as count
+        FROM reservation_order 
+        WHERE status IN (2, 3)
+        AND reservation_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY HOUR(STR_TO_DATE(start_time, '%H:%i'))
+        ORDER BY HOUR(STR_TO_DATE(start_time, '%H:%i'))
+    </select>
+
+</mapper> 
