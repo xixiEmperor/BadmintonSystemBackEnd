@@ -3,9 +3,7 @@ package com.wuli.badminton.controller;
 import com.wuli.badminton.dto.ReservationOrderDto;
 import com.wuli.badminton.dto.ReservationOrderQueryDto;
 import com.wuli.badminton.dto.VenueAvailabilityDto;
-import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.service.ReservationOrderService;
-import com.wuli.badminton.service.UserService;
 import com.wuli.badminton.vo.ReservationOrderVo;
 import com.wuli.badminton.vo.ResponseVo;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +26,6 @@ public class ReservationOrderController {
     
     @Autowired
     private ReservationOrderService reservationOrderService;
-    
-    @Autowired
-    private UserService userService;
     
     /**
      * 创建预约订单
@@ -160,12 +155,9 @@ public class ReservationOrderController {
     private Integer getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            // 通过用户名获取用户信息
-            String username = authentication.getName();
-            User currentUser = userService.findByUsername(username);
-            if (currentUser != null) {
-                return currentUser.getId().intValue();
-            }
+            // 这里需要根据实际的用户认证实现来获取用户ID
+            // 暂时返回一个测试用户ID
+            return 1;
         }
         throw new RuntimeException("用户未登录");
     }

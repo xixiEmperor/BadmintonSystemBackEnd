@@ -61,13 +61,26 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/api/auth/login",
                 "/api/auth/register",
                 "/uploads/avatars/**",
-                "/pay/notify/**",
+                "/pay/notify/**", // 支付平台异步通知接口（微信/支付宝回调）
                 "/api/venue/list",
                 "/api/venue/list/status/*",
                 "/api/venue/*/",
                 "/api/reservations/availability",
                 "/api/reservations/venue/*",
-                "/api/reservations/payment/callback"
+                // 场地相关浏览接口（游客可访问）
+                "/api/venue/availability",
+                "/api/venue/status-matrix",
+                // 预约通知相关浏览接口（游客可访问）
+                "/api/reservation/notice",
+                "/api/reservation/notice/**",
+                // 商城相关浏览接口（游客可访问）
+                "/api/mall/products",
+                "/api/mall/products/**",
+                "/api/mall/categories",
+                // 论坛相关浏览接口（游客可访问）
+                "/api/forum/posts",
+                "/api/forum/posts/detail",
+                "/api/forum/posts/*/replies"
             ).permitAll()
             .anyRequest().authenticated()
             .and()

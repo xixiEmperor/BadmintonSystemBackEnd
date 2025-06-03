@@ -18,6 +18,7 @@
         <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
         <result column="status" property="status" jdbcType="INTEGER"/>
         <result column="pay_info_id" property="payInfoId" jdbcType="BIGINT"/>
+        <result column="pay_type" property="payType" jdbcType="INTEGER"/>
         <result column="pay_time" property="payTime" jdbcType="TIMESTAMP"/>
         <result column="refund_amount" property="refundAmount" jdbcType="DECIMAL"/>
         <result column="refund_time" property="refundTime" jdbcType="TIMESTAMP"/>
@@ -31,7 +32,7 @@
     <sql id="Base_Column_List">
         id, order_no, user_id, username, venue_id, venue_name, reservation_date, 
         start_time, end_time, duration, price_per_hour, total_amount, status, 
-        pay_info_id, pay_time, refund_amount, refund_time, 
+        pay_info_id, pay_type, pay_time, refund_amount, refund_time, 
         cancel_reason, remark, create_time, update_time
     </sql>
 
@@ -40,13 +41,13 @@
         INSERT INTO reservation_order (
             order_no, user_id, username, venue_id, venue_name, reservation_date,
             start_time, end_time, duration, price_per_hour, total_amount, status,
-            remark, create_time, update_time
+            pay_type, remark, create_time, update_time
         ) VALUES (
             #{orderNo,jdbcType=VARCHAR}, #{userId,jdbcType=INTEGER}, #{username,jdbcType=VARCHAR},
             #{venueId,jdbcType=INTEGER}, #{venueName,jdbcType=VARCHAR}, #{reservationDate,jdbcType=DATE},
             #{startTime,jdbcType=VARCHAR}, #{endTime,jdbcType=VARCHAR}, #{duration,jdbcType=INTEGER},
             #{pricePerHour,jdbcType=DECIMAL}, #{totalAmount,jdbcType=DECIMAL}, #{status,jdbcType=INTEGER},
-            #{remark,jdbcType=VARCHAR},
+            #{payType,jdbcType=INTEGER}, #{remark,jdbcType=VARCHAR},
             #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}
         )
     </insert>
@@ -85,6 +86,9 @@
             <if test="endDate != null and endDate != ''">
                 AND reservation_date &lt;= #{endDate,jdbcType=DATE}
             </if>
+            <if test="payType != null">
+                AND pay_type = #{payType,jdbcType=INTEGER}
+            </if>
             <if test="orderNo != null and orderNo != ''">
                 AND order_no LIKE CONCAT('%', #{orderNo,jdbcType=VARCHAR}, '%')
             </if>
@@ -118,6 +122,9 @@
             <if test="endDate != null and endDate != ''">
                 AND reservation_date &lt;= #{endDate,jdbcType=DATE}
             </if>
+            <if test="payType != null">
+                AND pay_type = #{payType,jdbcType=INTEGER}
+            </if>
             <if test="orderNo != null and orderNo != ''">
                 AND order_no LIKE CONCAT('%', #{orderNo,jdbcType=VARCHAR}, '%')
             </if>
@@ -142,6 +149,7 @@
             total_amount = #{totalAmount,jdbcType=DECIMAL},
             status = #{status,jdbcType=INTEGER},
             pay_info_id = #{payInfoId,jdbcType=BIGINT},
+            pay_type = #{payType,jdbcType=INTEGER},
             pay_time = #{payTime,jdbcType=TIMESTAMP},
             refund_amount = #{refundAmount,jdbcType=DECIMAL},
             refund_time = #{refundTime,jdbcType=TIMESTAMP},
@@ -163,6 +171,7 @@
     <update id="updatePayInfo">
         UPDATE reservation_order
         SET pay_info_id = #{payInfoId,jdbcType=BIGINT},
+            pay_type = #{payType,jdbcType=INTEGER},
             pay_time = #{payTime,jdbcType=TIMESTAMP},
             update_time = NOW()
         WHERE id = #{id,jdbcType=BIGINT}

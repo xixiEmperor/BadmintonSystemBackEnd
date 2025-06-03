@@ -39,12 +39,7 @@ public class PayNotifyListener {
     public void processPayNotify(String message) {
         try {
             log.info("接收到支付通知: {}", message);
-            
-            // 解码消息（处理ASCII编码格式）
-            String decodedMessage = decodeMessage(message);
-            log.info("解码后的消息: {}", decodedMessage);
-            
-            PayNotifyMessage payNotifyMessage = objectMapper.readValue(decodedMessage, PayNotifyMessage.class);
+            PayNotifyMessage payNotifyMessage = objectMapper.readValue(message, PayNotifyMessage.class);
             
             // 根据业务类型分发处理
             String businessType = payNotifyMessage.getBusinessType();
@@ -74,55 +69,5 @@ public class PayNotifyListener {
         } catch (Exception e) {
             log.error("处理支付通知失败: {}", e.getMessage(), e);
         }
-    }
-    
-    /**
-     * 解码消息，处理ASCII编码格式
-     * @param message 原始消息
-     * @return 解码后的消息
-     */
-    private String decodeMessage(String message) {
-        if (message == null || message.trim().isEmpty()) {
-            return message;
-        }
-        
-        message = message.trim();
-        
-        // 如果消息已经是JSON格式，直接返回
-        if (message.startsWith("{") && message.endsWith("}")) {
-            return message;
-        }
-        
-        // 处理ASCII编码格式（逗号分隔的数字）
-        if (message.contains(",") && message.matches("[0-9,\\s]+")) {
-            try {
-                String[] asciiCodes = message.split(",");
-                StringBuilder sb = new StringBuilder();
-                for (String code : asciiCodes) {
-                    int ascii = Integer.parseInt(code.trim());
-                    if (ascii >= 32 && ascii <= 126) { // 可打印ASCII字符范围
-                        sb.append((char) ascii);
-                    }
-                }
-                String decodedResult = sb.toString();
-                log.info("ASCII解码: {} -> {}", message.substring(0, Math.min(50, message.length())) + "...", decodedResult);
-                
-                // 处理双重转义的JSON字符串
-                if (decodedResult.startsWith("\"") && decodedResult.endsWith("\"")) {
-                    // 去掉外层的双引号，并反转义内部的JSON
-                    decodedResult = decodedResult.substring(1, decodedResult.length() - 1);
-                    decodedResult = decodedResult.replace("\\\"", "\"");
-                    log.info("去除双重转义后: {}", decodedResult);
-                }
-                
-                return decodedResult;
-            } catch (Exception e) {
-                log.error("ASCII解码失败: {}, error: {}", message.substring(0, Math.min(50, message.length())), e.getMessage());
-                return message;
-            }
-        }
-        
-        // 其他格式直接返回
-        return message;
     }
 } 
