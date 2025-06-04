@@ -74,6 +74,14 @@ public interface UserService extends UserDetailsService {
      */
     void updateLastLoginTime(Long userId);
     
+    /**
+     * 重置密码（通过邮箱验证码）
+     * @param userId 用户ID
+     * @param newPassword 新密码
+     * @return 是否重置成功
+     */
+    boolean resetPassword(Long userId, String newPassword);
+    
     @Override
     UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;
 } 
