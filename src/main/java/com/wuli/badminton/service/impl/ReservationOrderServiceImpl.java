@@ -193,8 +193,12 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     
     @Override
     public ResponseVo<Map<String, Object>> getOrderList(ReservationOrderQueryDto queryDto) {
+        // 保存原始页码
+        int originalPage = queryDto.getPage();
+        int originalSize = queryDto.getSize();
+        
         // 计算分页参数
-        int offset = (queryDto.getPage() - 1) * queryDto.getSize();
+        int offset = (originalPage - 1) * originalSize;
         queryDto.setPage(offset);
         
         List<ReservationOrder> orders = reservationOrderMapper.selectByCondition(queryDto);
@@ -207,8 +211,9 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
         Map<String, Object> result = new HashMap<>();
         result.put("list", orderVos);
         result.put("total", total);
-        result.put("page", queryDto.getPage() / queryDto.getSize() + 1);
-        result.put("size", queryDto.getSize());
+        result.put("page", originalPage);
+        result.put("size", originalSize);
+        result.put("totalPages", (int) Math.ceil((double) total / originalSize));
         
         return ResponseVo.success(result);
     }

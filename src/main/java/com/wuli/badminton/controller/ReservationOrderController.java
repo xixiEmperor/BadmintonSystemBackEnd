@@ -4,12 +4,11 @@ import com.wuli.badminton.dto.ReservationOrderDto;
 import com.wuli.badminton.dto.ReservationOrderQueryDto;
 import com.wuli.badminton.dto.VenueAvailabilityDto;
 import com.wuli.badminton.service.ReservationOrderService;
+import com.wuli.badminton.service.UserService;
 import com.wuli.badminton.vo.ReservationOrderVo;
 import com.wuli.badminton.vo.ResponseVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -27,6 +26,9 @@ public class ReservationOrderController {
     @Autowired
     private ReservationOrderService reservationOrderService;
     
+    @Autowired
+    private UserService userService;
+    
     /**
      * 创建预约订单
      */
@@ -39,13 +41,23 @@ public class ReservationOrderController {
     }
     
     /**
-     * 查询我的订单列表
+     * 查询我的订单列表（分页）
      */
     @GetMapping("/my-orders")
-    public ResponseVo<List<ReservationOrderVo>> getMyOrders(
+    public ResponseVo<Map<String, Object>> getMyOrders(
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "10") Integer size,
             @RequestParam(required = false) Integer status) {
         Integer userId = getCurrentUserId();
-        return reservationOrderService.getUserOrders(userId, status);
+        
+        // 构建查询条件
+        ReservationOrderQueryDto queryDto = new ReservationOrderQueryDto();
+        queryDto.setUserId(userId);
+        queryDto.setStatus(status);
+        queryDto.setPage(page);
+        queryDto.setSize(size);
+        
+        return reservationOrderService.getOrderList(queryDto);
     }
     
     /**
@@ -163,12 +175,12 @@ public class ReservationOrderController {
      * 获取当前登录用户ID
      */
     private Integer getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            // 这里需要根据实际的用户认证实现来获取用户ID
-            // 暂时返回一个测试用户ID
-            return 1;
+        try {
+            Long userId = userService.getCurrentUser().getId();
+            return userId.intValue();
+        } catch (Exception e) {
+            log.error("获取当前用户失败: {}", e.getMessage());
+            throw new RuntimeException("用户未登录");
         }
-        throw new RuntimeException("用户未登录");
     }
 } 
