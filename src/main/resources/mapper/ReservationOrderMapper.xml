@@ -41,13 +41,13 @@
         INSERT INTO reservation_order (
             order_no, user_id, username, venue_id, venue_name, reservation_date,
             start_time, end_time, duration, price_per_hour, total_amount, status,
-            pay_type, remark, create_time, update_time
+            remark, create_time, update_time
         ) VALUES (
             #{orderNo,jdbcType=VARCHAR}, #{userId,jdbcType=INTEGER}, #{username,jdbcType=VARCHAR},
             #{venueId,jdbcType=INTEGER}, #{venueName,jdbcType=VARCHAR}, #{reservationDate,jdbcType=DATE},
             #{startTime,jdbcType=VARCHAR}, #{endTime,jdbcType=VARCHAR}, #{duration,jdbcType=INTEGER},
             #{pricePerHour,jdbcType=DECIMAL}, #{totalAmount,jdbcType=DECIMAL}, #{status,jdbcType=INTEGER},
-            #{payType,jdbcType=INTEGER}, #{remark,jdbcType=VARCHAR},
+            #{remark,jdbcType=VARCHAR},
             #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}
         )
     </insert>

@@ -3,7 +3,6 @@ package com.wuli.badminton.dto;
 import lombok.Data;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Min;
 
 /**
  * 预约订单DTO类
@@ -37,13 +36,6 @@ public class ReservationOrderDto {
     @NotNull(message = "结束时间不能为空")
     @Pattern(regexp = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$", message = "时间格式错误，应为HH:mm")
     private String endTime;
-    
-    /**
-     * 支付方式：1-支付宝，2-微信
-     */
-    @NotNull(message = "支付方式不能为空")
-    @Min(value = 1, message = "支付方式错误")
-    private Integer payType;
     
     /**
      * 备注

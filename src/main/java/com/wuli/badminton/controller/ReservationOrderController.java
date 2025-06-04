@@ -113,6 +113,16 @@ public class ReservationOrderController {
         return reservationOrderService.paymentCallback(orderNo, payInfoId);
     }
     
+    /**
+     * 关联支付信息接口（在创建支付二维码后调用）
+     */
+    @PostMapping("/payment/link")
+    public ResponseVo<String> linkPayInfo(
+            @RequestParam String orderNo,
+            @RequestParam Long payInfoId) {
+        return reservationOrderService.linkPayInfo(orderNo, payInfoId);
+    }
+    
     // ==================== 管理员接口 ====================
     
     /**

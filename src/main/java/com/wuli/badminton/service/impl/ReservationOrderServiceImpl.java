@@ -3,6 +3,7 @@ package com.wuli.badminton.service.impl;
 import com.wuli.badminton.dao.ReservationOrderMapper;
 import com.wuli.badminton.dao.UserMapper;
 import com.wuli.badminton.dao.VenueMapper;
+import com.wuli.badminton.dao.PayInfoMapper;
 import com.wuli.badminton.dto.ReservationOrderDto;
 import com.wuli.badminton.dto.ReservationOrderQueryDto;
 import com.wuli.badminton.dto.VenueAvailabilityDto;
@@ -11,6 +12,7 @@ import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.ReservationOrder;
 import com.wuli.badminton.pojo.User;
 import com.wuli.badminton.pojo.Venue;
+import com.wuli.badminton.pojo.PayInfo;
 import com.wuli.badminton.service.ReservationOrderService;
 import com.wuli.badminton.vo.ReservationOrderVo;
 import com.wuli.badminton.vo.ResponseVo;
@@ -44,6 +46,9 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private PayInfoMapper payInfoMapper;
     
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     
@@ -148,7 +153,6 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             order.setPricePerHour(venue.getPricePerHour());
             order.setTotalAmount(venue.getPricePerHour().multiply(duration));
             order.setStatus(ReservationStatusEnum.PENDING_PAYMENT.getCode());
-            order.setPayType(dto.getPayType());
             order.setRemark(dto.getRemark());
             order.setCreateTime(new Date());
             order.setUpdateTime(new Date());
@@ -315,12 +319,46 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
             return ResponseVo.error(ResponseEnum.ORDER_PAID);
         }
         
-        int result = reservationOrderMapper.updatePayInfo(order.getId(), payInfoId, order.getPayType(), new Date());
+        // 从支付信息中获取支付方式
+        PayInfo payInfo = payInfoMapper.selectByOrderNo(orderNo);
+        Integer payType = payInfo != null ? payInfo.getPayPlatform() : null;
+        
+        int result = reservationOrderMapper.updatePayInfo(order.getId(), payInfoId, payType, new Date());
         if (result > 0) {
             reservationOrderMapper.updateStatus(order.getId(), ReservationStatusEnum.PAID.getCode());
             return ResponseVo.success("支付成功");
         } else {
             return ResponseVo.error(ResponseEnum.ERROR);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public ResponseVo<String> linkPayInfo(String orderNo, Long payInfoId) {
+        ReservationOrder order = reservationOrderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            return ResponseVo.error(ResponseEnum.RESERVATION_NOT_EXIST);
+        }
+        
+        // 只有待支付状态的订单才能关联支付信息
+        if (!ReservationStatusEnum.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
+            return ResponseVo.error(ResponseEnum.ORDER_PAID, "订单状态不正确，无法关联支付信息");
+        }
+        
+        // 如果已经关联了支付信息，不允许重复关联
+        if (order.getPayInfoId() != null) {
+            log.warn("订单已关联支付信息，orderNo: {}, 已关联payInfoId: {}, 尝试关联payInfoId: {}", 
+                    orderNo, order.getPayInfoId(), payInfoId);
+            return ResponseVo.error(ResponseEnum.ERROR, "订单已关联支付信息");
+        }
+        
+        // 更新订单的支付信息ID，但不设置支付方式和支付时间
+        int result = reservationOrderMapper.updatePayInfo(order.getId(), payInfoId, null, null);
+        if (result > 0) {
+            log.info("订单关联支付信息成功，orderNo: {}, payInfoId: {}", orderNo, payInfoId);
+            return ResponseVo.success("支付信息关联成功");
+        } else {
+            return ResponseVo.error(ResponseEnum.ERROR, "关联支付信息失败");
         }
     }
     
@@ -519,6 +557,8 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
         // 设置支付方式描述
         if (order.getPayType() != null) {
             vo.setPayTypeDesc(order.getPayType() == 1 ? "支付宝" : "微信");
+        } else {
+            vo.setPayTypeDesc("未知");
         }
         
         // 设置操作权限

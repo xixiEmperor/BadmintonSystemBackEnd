@@ -4,6 +4,7 @@ import com.lly835.bestpay.model.PayResponse;
 import com.wuli.badminton.enums.ResponseEnum;
 import com.wuli.badminton.pojo.PayInfo;
 import com.wuli.badminton.service.PayService;
+import com.wuli.badminton.service.ReservationOrderService;
 import com.wuli.badminton.vo.ResponseVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class PayController {
     @Autowired
     private PayService payService;
     
+    @Autowired
+    private ReservationOrderService reservationOrderService;
+    
     /**
      * 创建支付
      * @return 支付响应
@@ -28,6 +32,28 @@ public class PayController {
     @PostMapping("/create")
     public ResponseVo<PayResponse> create(@RequestBody CreatePayRequestDto requestDto) {
         PayResponse response = payService.createPay(requestDto.getOrderNo(), requestDto.getAmount(), requestDto.getBusinessType());
+        
+        // 如果是预约订单，自动关联PayInfo ID到订单
+        if ("RESERVATION".equals(requestDto.getBusinessType())) {
+            try {
+                // 查询刚刚创建的PayInfo记录
+                PayInfo payInfo = payService.queryByOrderId(requestDto.getOrderNo());
+                if (payInfo != null) {
+                    // 关联支付信息到预约订单
+                    ResponseVo<String> linkResult = reservationOrderService.linkPayInfo(requestDto.getOrderNo(), payInfo.getId().longValue());
+                    if (linkResult.getCode() == 0) {
+                        log.info("自动关联支付信息成功，orderNo: {}, payInfoId: {}", requestDto.getOrderNo(), payInfo.getId());
+                    } else {
+                        log.warn("自动关联支付信息失败，orderNo: {}, payInfoId: {}, error: {}", 
+                                requestDto.getOrderNo(), payInfo.getId(), linkResult.getMsg());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("自动关联预约订单支付信息失败，orderNo: {}, error: {}", requestDto.getOrderNo(), e.getMessage(), e);
+                // 这里不抛出异常，因为支付二维码已经创建成功，不应该因为关联失败而影响支付流程
+            }
+        }
+        
         return ResponseVo.success(response);
     }
     
