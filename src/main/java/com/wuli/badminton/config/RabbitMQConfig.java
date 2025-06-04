@@ -102,7 +102,24 @@ public class RabbitMQConfig {
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        // 设置字符编码
+        converter.setDefaultCharset("UTF-8");
+        rabbitTemplate.setMessageConverter(converter);
+        
+        // 设置强制确认模式（可选）
+        rabbitTemplate.setMandatory(true);
+        
         return rabbitTemplate;
+    }
+    
+    /**
+     * 配置Jackson消息转换器
+     */
+    @Bean
+    public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        converter.setDefaultCharset("UTF-8");
+        return converter;
     }
 } 

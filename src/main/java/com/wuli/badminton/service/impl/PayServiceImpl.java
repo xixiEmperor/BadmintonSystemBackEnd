@@ -158,7 +158,10 @@ public class PayServiceImpl implements PayService {
             message.setPayAmount(payInfo.getPayAmount());
             
             try {
-                rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_PAY_NOTIFY, objectMapper.writeValueAsString(message));
+                String jsonMessage = objectMapper.writeValueAsString(message);
+                logger.info("准备发送MQ消息，JSON内容: {}", jsonMessage);
+                
+                rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_PAY_NOTIFY, jsonMessage);
                 logger.info("支付成功消息已发送: {}", message);
             } catch (JsonProcessingException e) {
                 logger.error("发送支付成功消息失败: {}", e.getMessage(), e);

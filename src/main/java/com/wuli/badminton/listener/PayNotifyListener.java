@@ -12,6 +12,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * 支付通知消息监听器
  */
@@ -39,7 +41,10 @@ public class PayNotifyListener {
     public void processPayNotify(String message) {
         try {
             log.info("接收到支付通知: {}", message);
+            
+            // 直接解析JSON消息
             PayNotifyMessage payNotifyMessage = objectMapper.readValue(message, PayNotifyMessage.class);
+            log.info("成功解析支付通知消息: {}", payNotifyMessage);
             
             // 根据业务类型分发处理
             String businessType = payNotifyMessage.getBusinessType();
@@ -68,6 +73,39 @@ public class PayNotifyListener {
             }
         } catch (Exception e) {
             log.error("处理支付通知失败: {}", e.getMessage(), e);
+            log.error("失败的消息内容: {}", message);
+            
+            // 如果是JSON解析失败，尝试ASCII转换
+            if (e.getMessage().contains("Unexpected character")) {
+                try {
+                    log.warn("尝试ASCII码转换...");
+                    String convertedMessage = convertAsciiToString(message);
+                    log.info("ASCII转换后重新处理: {}", convertedMessage);
+                    processPayNotify(convertedMessage);
+                } catch (Exception ex) {
+                    log.error("ASCII转换也失败了: {}", ex.getMessage(), ex);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 将ASCII码格式的字符串转换为正常字符串
+     * @param asciiString ASCII码字符串，格式如 "34,123,92,34,111..."
+     * @return 转换后的字符串
+     */
+    private String convertAsciiToString(String asciiString) {
+        try {
+            String[] asciiCodes = asciiString.split(",");
+            StringBuilder sb = new StringBuilder();
+            for (String code : asciiCodes) {
+                int ascii = Integer.parseInt(code.trim());
+                sb.append((char) ascii);
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("ASCII码转换失败: {}", e.getMessage());
+            throw new RuntimeException("ASCII码转换失败", e);
         }
     }
 } 
