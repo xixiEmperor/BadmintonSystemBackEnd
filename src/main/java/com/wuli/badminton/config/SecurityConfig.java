@@ -60,6 +60,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 "/static/**",
                 "/api/auth/login",
                 "/api/auth/register",
+                "/api/auth/send-code", // 发送验证码接口（游客可访问）
+                "/api/auth/reset-password", // 重置密码接口（游客可访问）
                 "/uploads/avatars/**",
                 "/pay/notify/**", // 支付平台异步通知接口（微信/支付宝回调）
                 "/api/venue/list",

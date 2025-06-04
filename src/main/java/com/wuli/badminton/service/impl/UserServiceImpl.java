@@ -297,4 +297,30 @@ public class UserServiceImpl implements UserService {
             logger.error("更新用户最后登录时间失败，用户ID: {}, 错误: {}", userId, e.getMessage(), e);
         }
     }
+    
+    @Override
+    @Transactional
+    public boolean resetPassword(Long userId, String newPassword) {
+        logger.info("重置密码，用户ID: {}", userId);
+        try {
+            // 检查用户是否存在
+            User user = userMapper.findById(userId);
+            if (user == null) {
+                logger.warn("用户不存在，ID: {}", userId);
+                return false;
+            }
+            
+            // 加密新密码
+            String encodedPassword = passwordEncoder.encode(newPassword);
+            
+            // 更新密码
+            userMapper.resetPassword(userId, encodedPassword);
+            
+            logger.info("用户密码重置成功，用户ID: {}, 用户名: {}", userId, user.getUsername());
+            return true;
+        } catch (Exception e) {
+            logger.error("重置用户密码失败，用户ID: {}, 错误: {}", userId, e.getMessage(), e);
+            return false;
+        }
+    }
 } 

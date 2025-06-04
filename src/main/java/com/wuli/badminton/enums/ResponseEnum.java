@@ -240,7 +240,12 @@ public enum ResponseEnum {
     /**
      * 权限不足
      */
-    PERMISSION_DENIED(30003, "权限不足，仅管理员可操作");
+    PERMISSION_DENIED(30003, "权限不足，仅管理员可操作"),
+    
+    /**
+     * 验证码错误或已过期
+     */
+    VERIFICATION_CODE_ERROR(30004, "验证码错误或已过期");
     
     /**
      * 状态码
