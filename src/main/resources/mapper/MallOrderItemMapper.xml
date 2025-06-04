@@ -22,19 +22,15 @@
         total_price, specification_id, specs, price_adjustment, create_time, update_time
     </sql>
     
-    <insert id="batchInsert" parameterType="list">
+    <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO mall_order_item (
-            order_no, product_id, product_name, product_image, current_unit_price, quantity,
+            order_no, product_id, product_name, product_image, current_unit_price, quantity, 
             total_price, specification_id, specs, price_adjustment, create_time, update_time
-        )
-        VALUES
+        ) VALUES
         <foreach collection="orderItems" item="item" separator=",">
-            (
-                #{item.orderNo}, #{item.productId}, #{item.productName}, #{item.productImage}, 
-                #{item.currentUnitPrice}, #{item.quantity}, #{item.totalPrice}, 
-                #{item.specificationId}, #{item.specs}, #{item.priceAdjustment},
-                #{item.createTime}, #{item.updateTime}
-            )
+            (#{item.orderNo}, #{item.productId}, #{item.productName}, #{item.productImage}, 
+             #{item.currentUnitPrice}, #{item.quantity}, #{item.totalPrice}, #{item.specificationId}, 
+             #{item.specs}, #{item.priceAdjustment}, #{item.createTime}, #{item.updateTime})
         </foreach>
     </insert>
     
@@ -42,10 +38,59 @@
         SELECT <include refid="Base_Column_List"/>
         FROM mall_order_item
         WHERE order_no = #{orderNo}
+        ORDER BY id ASC
     </select>
     
     <delete id="deleteByOrderNo" parameterType="java.lang.Long">
-        DELETE FROM mall_order_item
-        WHERE order_no = #{orderNo}
+        DELETE FROM mall_order_item WHERE order_no = #{orderNo}
     </delete>
+    
+    <!-- 推荐算法相关查询 -->
+    
+    <!-- 获取用户购买过的商品ID列表 -->
+    <select id="getUserPurchasedProductIds" parameterType="java.lang.Long" resultType="java.lang.Integer">
+        SELECT DISTINCT oi.product_id
+        FROM mall_order_item oi
+        INNER JOIN mall_order o ON oi.order_no = o.order_no
+        WHERE o.user_id = #{userId}
+          AND o.status IN (20, 40)
+        ORDER BY oi.product_id DESC
+    </select>
+    
+    <!-- 获取购买了指定商品的其他用户ID列表 -->
+    <select id="getUsersWhoAlsoBoughtProducts" resultType="java.lang.Long">
+        SELECT DISTINCT o.user_id
+        FROM mall_order_item oi
+        INNER JOIN mall_order o ON oi.order_no = o.order_no
+        WHERE oi.product_id IN
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        AND o.status IN (20, 40)
+        AND o.user_id != #{excludeUserId}
+    </select>
+    
+    <!-- 获取相似用户购买的商品统计 -->
+    <select id="getSimilarUsersPurchaseStats" resultType="java.util.Map">
+        SELECT 
+            oi.product_id as productId,
+            COUNT(*) as purchaseCount,
+            SUM(oi.quantity) as totalQuantity
+        FROM mall_order_item oi
+        INNER JOIN mall_order o ON oi.order_no = o.order_no
+        WHERE o.user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND o.status IN (20, 40)
+        <if test="excludeProductIds != null and excludeProductIds.size() > 0">
+        AND oi.product_id NOT IN
+        <foreach collection="excludeProductIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        </if>
+        GROUP BY oi.product_id
+        ORDER BY purchaseCount DESC, totalQuantity DESC
+        LIMIT 20
+    </select>
 </mapper> 

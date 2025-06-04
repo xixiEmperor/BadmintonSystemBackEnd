@@ -147,4 +147,31 @@
         SET sales = sales + #{count,jdbcType=INTEGER}, update_time = NOW()
         WHERE id = #{id,jdbcType=INTEGER}
     </update>
+    
+    <!-- 推荐算法相关查询 -->
+    
+    <!-- 获取热门商品（按销量排序） -->
+    <select id="getHotProducts" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product
+        WHERE status = 1
+        AND stock > 0
+        ORDER BY sales DESC, create_time DESC
+        LIMIT #{limit}
+    </select>
+    
+    <!-- 根据商品ID列表批量查询商品基本信息 -->
+    <select id="getProductsByIds" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM mall_product
+        WHERE id IN
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        AND status = 1
+        AND stock > 0
+        ORDER BY sales DESC
+    </select>
 </mapper> 

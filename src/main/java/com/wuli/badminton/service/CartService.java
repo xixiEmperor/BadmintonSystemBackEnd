@@ -72,6 +72,13 @@ public interface CartService {
     List<CartItem> listSelectedItems(Long userId);
     
     /**
+     * 获取用户所有购物车商品列表（包括未选中的）
+     * @param userId 用户ID
+     * @return 所有购物车商品列表
+     */
+    List<CartItem> listAllItems(Long userId);
+    
+    /**
      * 删除用户选中的购物车商品
      * @param userId 用户ID
      * @return 是否删除成功

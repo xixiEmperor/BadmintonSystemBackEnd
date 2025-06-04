@@ -552,6 +552,28 @@ public class CartServiceImpl implements CartService {
     }
     
     /**
+     * 获取用户所有购物车商品列表（包括未选中的）
+     */
+    @Override
+    public List<CartItem> listAllItems(Long userId) {
+        try {
+            String cartKey = getCartKey(userId);
+            HashOperations<String, String, String> hashOps = redisTemplate.opsForHash();
+            Map<String, String> cartMap = hashOps.entries(cartKey);
+            
+            // 将购物车项转为对象列表
+            return cartMap.values().stream()
+                .map(this::deserializeCartItem)
+                .filter(Objects::nonNull)
+                .peek(this::updateCartItemLatestInfo) // 更新最新商品信息
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("获取用户所有购物车商品失败: userId={}", userId, e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
      * 删除用户选中的购物车商品
      */
     @Override

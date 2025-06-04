@@ -60,4 +60,18 @@ public interface MallProductMapper {
      * @return 影响行数
      */
     int increaseSales(@Param("id") Integer id, @Param("count") Integer count);
+    
+    /**
+     * 获取热门商品（按销量排序）
+     * @param limit 限制数量
+     * @return 热门商品列表
+     */
+    List<MallProduct> getHotProducts(@Param("limit") Integer limit);
+    
+    /**
+     * 根据商品ID列表批量查询商品基本信息
+     * @param productIds 商品ID列表
+     * @return 商品列表
+     */
+    List<MallProduct> getProductsByIds(@Param("productIds") List<Integer> productIds);
 } 
